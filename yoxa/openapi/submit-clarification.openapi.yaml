@@ -1,0 +1,67 @@
+openapi: 3.1.0
+info:
+  title: Update Reconciled Resolution Graph
+  version: 1.0.0
+servers:
+  - url: https://uzvqxpfdxwckhtvvjkzo.supabase.co
+paths:
+  /functions/v1/submit-clarification:
+    post:
+      operationId: updateReconciledResolutionGraph
+      summary: Persists human clarification and resolves dependencies
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [case_id, reviewer_identity, outcome, resolved_dependencies]
+              properties:
+                case_id:
+                  type: string
+                reviewer_identity:
+                  type: string
+                outcome:
+                  type: string
+                written_reason:
+                  type: string
+                resolved_dependencies:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Clarification persisted
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [persistence_status, case_id, graph_version, graph_state, audit_event_id]
+                    properties:
+                      persistence_status:
+                        type: string
+                      case_id:
+                        type: string
+                      graph_version:
+                        type: integer
+                      graph_state:
+                        type: string
+                      audit_event_id:
+                        type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - bearerAuth: []

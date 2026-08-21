@@ -1,0 +1,54 @@
+openapi: 3.1.0
+info:
+  title: Update Blocker Status
+  version: 1.0.0
+servers:
+  - url: https://uzvqxpfdxwckhtvvjkzo.supabase.co
+paths:
+  /functions/v1/resolve-blockers:
+    post:
+      operationId: updateBlockerStatus
+      summary: Resolves the current Resolution Graph blockers
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [case_id]
+              properties:
+                case_id:
+                  type: string
+      responses:
+        '200':
+          description: Blocker action recorded
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [case_id, graph_version]
+                    properties:
+                      case_id:
+                        type: string
+                      graph_version:
+                        type: integer
+                      stored_status:
+                        type: string
+                      graph_state:
+                        type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - bearerAuth: []

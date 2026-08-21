@@ -1,0 +1,58 @@
+openapi: 3.1.0
+info:
+  title: Update Versioned Resolution Graph
+  version: 1.0.0
+servers:
+  - url: https://uzvqxpfdxwckhtvvjkzo.supabase.co
+paths:
+  /functions/v1/build-resolution-graph:
+    post:
+      operationId: updateVersionedResolutionGraph
+      summary: Build and persist the resolution graph
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [case_id]
+              properties:
+                case_id:
+                  type: string
+      responses:
+        '200':
+          description: Graph persisted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: false
+                required: [success, data]
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    additionalProperties: false
+                    required: [persistence_status, graph_id, graph_version, graph_state, audit_event_id, idempotency_result]
+                    properties:
+                      persistence_status:
+                        type: string
+                      graph_id:
+                        type: string
+                      graph_version:
+                        type: integer
+                      graph_state:
+                        type: string
+                      audit_event_id:
+                        type: string
+                      idempotency_result:
+                        type: string
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+security:
+  - bearerAuth: []
