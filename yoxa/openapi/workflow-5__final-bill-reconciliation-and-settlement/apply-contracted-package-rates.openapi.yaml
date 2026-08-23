@@ -1,0 +1,38 @@
+openapi: 3.1.0
+info:
+  title: Apply Contracted Package Rates API
+  description: Applies hospital network contracted package rates and limits.
+  version: 1.0.0
+servers:
+  - url: https://uzvqxpfdxwckhtvvjkzo.supabase.co
+paths:
+  /functions/v1/read-case-registry:
+    get:
+      summary: Apply Contracted Package Rates
+      operationId: applyContractedPackageRates
+      parameters:
+        - name: case_id
+          in: query
+          required: true
+          schema:
+            type: string
+            default: CASE-CT-REAL-001
+      responses:
+        '200':
+          description: Package rates applied successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      case_id:
+                        type: string
+                      case_version:
+                        type: integer
+                      current_case_status:
+                        type: string
