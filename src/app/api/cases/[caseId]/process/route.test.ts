@@ -38,18 +38,37 @@ function makeRequest(body: string): NextRequest {
   });
 }
 
-function buildCaseLookupClient(currentCaseStatus = "AUTHORISED_BY_HUMAN") {
+function buildSupabaseClient(options?: {
+  currentCaseStatus?: string;
+  resolutionGraphResult?: { data: unknown; error: unknown };
+}) {
   const single = vi.fn().mockResolvedValue({
     data: {
       case_id: "case-123",
-      current_case_status: currentCaseStatus,
+      current_case_status: options?.currentCaseStatus ?? "AUTHORISED_BY_HUMAN",
       case_version: 3,
     },
     error: null,
   });
-  const eq = vi.fn(() => ({ single }));
-  const select = vi.fn(() => ({ eq }));
-  const from = vi.fn(() => ({ select }));
+  const caseEq = vi.fn(() => ({ single }));
+  const caseSelect = vi.fn(() => ({ eq: caseEq }));
+
+  const maybeSingle = vi.fn().mockResolvedValue(options?.resolutionGraphResult ?? { data: null, error: null });
+  const limit = vi.fn(() => ({ maybeSingle }));
+  const order = vi.fn(() => ({ limit }));
+  const graphEq = vi.fn(() => ({ order }));
+  const graphSelect = vi.fn(() => ({ eq: graphEq }));
+
+  const from = vi.fn((table: string) => {
+    switch (table) {
+      case "cases":
+        return { select: caseSelect };
+      case "resolution_graphs":
+        return { select: graphSelect };
+      default:
+        throw new Error(`Unexpected table: ${table}`);
+    }
+  });
 
   return { from };
 }
@@ -111,8 +130,35 @@ describe("POST /api/cases/[caseId]/process", () => {
     expectNoSideEffects();
   });
 
+  it("returns 409 INVALID_NEXT_WORKFLOW before workflow-run persistence when the requested key is valid but not next", async () => {
+    createClient.mockResolvedValue(
+      buildSupabaseClient({
+        currentCaseStatus: "ACTIVATED_VALIDATED",
+      })
+    );
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "discharge" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: {
+        code: "INVALID_NEXT_WORKFLOW",
+        requestedWorkflowKey: "discharge",
+        nextWorkflowKey: "preauth",
+        caseStatus: "ACTIVATED_VALIDATED",
+        resolutionGraphState: null,
+      },
+    });
+    expect(getOrCreateWorkflowRun).not.toHaveBeenCalled();
+    expect(updateWorkflowRunState).not.toHaveBeenCalled();
+    expect(triggerYoxaWorkflow).not.toHaveBeenCalled();
+  });
+
   it("passes a valid workflowKey to the first orchestration boundary without triggering Yoxa", async () => {
-    createClient.mockResolvedValue(buildCaseLookupClient());
+    createClient.mockResolvedValue(buildSupabaseClient());
     getOrCreateWorkflowRun.mockResolvedValue({
       run: {
         id: "run-123",

@@ -8,6 +8,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getOrCreateWorkflowRun, updateWorkflowRunState } from "@/lib/yoxa/runs";
 import { triggerYoxaWorkflow } from "@/lib/yoxa/client";
 import { parseProcessRequest } from "@/lib/yoxa/process-request";
+import { assertRequestedWorkflowIsNext } from "@/lib/workflow/next-action";
 
 export async function POST(
   request: NextRequest,
@@ -49,6 +50,41 @@ export async function POST(
     }
 
     const { workflowKey } = parsedRequest;
+    const { data: resolutionGraph, error: resolutionGraphError } = await supabase
+      .from("resolution_graphs")
+      .select("graph_state")
+      .eq("case_id", caseId)
+      .order("graph_version", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (resolutionGraphError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "RESOLUTION_GRAPH_READ_FAILED",
+            message: `Failed to read resolution graph for case ${caseId}`,
+          },
+        },
+        { status: 502 }
+      );
+    }
+
+    const nextWorkflowAssertion = assertRequestedWorkflowIsNext(workflowKey, {
+      caseStatus: caseRecord.current_case_status,
+      resolutionGraph: resolutionGraph ? { graphState: resolutionGraph.graph_state } : null,
+    });
+
+    if (!nextWorkflowAssertion.ok) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: nextWorkflowAssertion.error,
+        },
+        { status: 409 }
+      );
+    }
 
     // Get or create persistent workflow run (with duplicate protection)
     const { run, isExisting } = await getOrCreateWorkflowRun(caseId, workflowKey, {
