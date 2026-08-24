@@ -50,7 +50,7 @@ Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx
 | Aggregate refresh button | Re-read aggregate snapshot | Same page via `GET /api/cases/[caseId]` | Aggregate API | Labels: `REFRESH AGGREGATE`, `RETRY AGGREGATE FETCH`, `REFRESHING AGGREGATE...` |
 | Primary process button | Submit next workflow request | `POST /api/cases/[caseId]/process` | Current status presentation + process route contract | Only renders when `canRenderProcessAction(...)` is true |
 | Top-level error banner | Status only | None | Aggregate read / process error | Shows current error message without mutating live state |
-| Metrics strip | Read-only | None | Aggregate decision + status data | Requested Amount, Recommended Benefit, Current Stage, Case Version |
+| Metrics strip | Read-only | None | Mixed source: requested amount is currently a load-state fallback only, while recommended benefit reads `latestDecision`, current stage reads status presentation, and case version reads `case.caseVersion` | Requested Amount, Recommended Benefit, Current Stage, Case Version |
 | Canonical state panel | Read-only | None | Aggregate case DTO | Member, Policy, Clinical, Provider, Case Timing, Evidence Provenance cards |
 | Decision basis panel | Read-only | None | `latestDecision`, `resolutionGraph`, `pendingApproval` | Shows persisted decision, support factors, and governance state |
 | `LIVE UPDATE INTERRUPTED` banner | Status only | None | Poll controller state | Appears when a background aggregate refresh fails but last good snapshot is retained |
@@ -67,7 +67,8 @@ Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx
 | --- | --- |
 | Snapshot badge | `LOADING SNAPSHOT`, `SNAPSHOT UNAVAILABLE`, `SNAPSHOT DEGRADED`, `SNAPSHOT AVAILABLE` |
 | Queue filters | `All`, `Active`, `Decision Ready`, `Authorised`, `Exception` |
-| Health rows | `CONFIGURED` / `MISSING`, `REACHABLE` / `UNAVAILABLE`, `PRESENT` / `MISSING` |
+| Health rows | `CONFIGURED` / `MISSING`, `REACHABLE` / `UNAVAILABLE`, `PRESENT` / `MISSING`, with `LOADING` and `STATUS UNAVAILABLE` fallbacks when `/api/health` is unavailable |
+| Snapshot time row | `/api/health` timestamp when present; otherwise `LOADING` or `STATUS UNAVAILABLE` |
 
 ## Command-Center Status Vocabulary
 

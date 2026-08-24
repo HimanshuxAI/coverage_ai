@@ -46,7 +46,7 @@ Coverage Twin is a Next.js 16 application for operating a six-workflow health-co
 ## Current Guarantees
 
 - Landing page CTAs now resolve to `/dashboard` or meaningful in-page sections; no dead CTA remains in the hardened local build.
-- Dashboard controls are aggregate-backed: refresh, search, sort, status filters, featured-case links, and health/config panels all read from real snapshot sources instead of fabricated counters or status copy.
+- Dashboard controls are snapshot-backed: refresh, search, sort, status filters, and featured-case links read from the Supabase `cases` snapshot, while health/config panels read from `/api/health`, instead of fabricated counters or status copy.
 - Command center sections are aggregate-backed: case record, decision, governance state, workflow execution trail, audit trail, and packet truth all render from the aggregate DTO or explicit no-record/unavailable states.
 - Command-center manual refresh reuses the aggregate GET path; it does not introduce a new workflow trigger.
 - Copy actions are limited to safe identifiers only.
