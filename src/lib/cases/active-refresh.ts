@@ -49,8 +49,12 @@ export function createActiveRefreshController<TSnapshot extends ActiveRefreshSna
   let timer: ReturnType<typeof globalThis.setTimeout> | null = null;
   let inFlightController: AbortController | null = null;
 
-  function isPollingSnapshot(snapshot: TSnapshot | null): boolean {
+  function hasActiveSnapshot(snapshot: TSnapshot | null): boolean {
     return snapshot !== null && shouldPollWorkflowRuns(snapshot.workflowRuns);
+  }
+
+  function isPollingActive() {
+    return started && hasActiveSnapshot(authoritativeSnapshot);
   }
 
   function clearTimer() {
@@ -72,7 +76,7 @@ export function createActiveRefreshController<TSnapshot extends ActiveRefreshSna
   }
 
   function scheduleNextRefresh() {
-    if (!started || timer !== null || inFlightController !== null || !isPollingSnapshot(authoritativeSnapshot)) {
+    if (!isPollingActive() || timer !== null || inFlightController !== null) {
       return;
     }
 
@@ -83,7 +87,7 @@ export function createActiveRefreshController<TSnapshot extends ActiveRefreshSna
   }
 
   async function runRefresh() {
-    if (!started || inFlightController !== null || !isPollingSnapshot(authoritativeSnapshot)) {
+    if (!isPollingActive() || inFlightController !== null) {
       return;
     }
 
@@ -119,7 +123,7 @@ export function createActiveRefreshController<TSnapshot extends ActiveRefreshSna
     authoritativeSnapshot = snapshot;
     interrupted = false;
 
-    if (!isPollingSnapshot(snapshot)) {
+    if (!hasActiveSnapshot(snapshot)) {
       clearTimer();
       abortInFlight();
       return;
@@ -151,7 +155,7 @@ export function createActiveRefreshController<TSnapshot extends ActiveRefreshSna
         authoritativeSnapshot,
         interrupted,
         inFlight: inFlightController !== null,
-        polling: isPollingSnapshot(authoritativeSnapshot),
+        polling: isPollingActive(),
       };
     },
   };

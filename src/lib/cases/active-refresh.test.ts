@@ -120,6 +120,11 @@ describe("createActiveRefreshController", () => {
     controller.stop();
 
     expect(activeSignal.aborted).toBe(true);
+    expect(controller.getState()).toMatchObject({
+      authoritativeSnapshot: buildSnapshot(["RUNNING"], "initial"),
+      inFlight: false,
+      polling: false,
+    });
 
     await vi.advanceTimersByTimeAsync(ACTIVE_REFRESH_INTERVAL_MS * 2);
     expect(fetchAggregate).toHaveBeenCalledTimes(1);
