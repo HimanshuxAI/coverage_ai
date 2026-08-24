@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   assertRequestedWorkflowIsNext,
+  caseStatusRequiresResolutionGraph,
   getNextWorkflowKey,
 } from "./next-action";
 
@@ -53,6 +54,14 @@ describe("getNextWorkflowKey", () => {
     },
   ])("returns $expected for $caseStatus", ({ caseStatus, resolutionGraph, expected }) => {
     expect(getNextWorkflowKey(caseStatus, resolutionGraph)).toBe(expected);
+  });
+});
+
+describe("caseStatusRequiresResolutionGraph", () => {
+  it("requires a graph read only for statuses whose next workflow is graph-disambiguated", () => {
+    expect(caseStatusRequiresResolutionGraph("WAITING_FOR_EVIDENCE")).toBe(true);
+    expect(caseStatusRequiresResolutionGraph("ACTIVATED_VALIDATED")).toBe(false);
+    expect(caseStatusRequiresResolutionGraph("AUTHORISED_BY_HUMAN")).toBe(false);
   });
 });
 

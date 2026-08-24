@@ -4,9 +4,11 @@ import type { ApiEnvelope, CaseAggregate } from "./contracts";
 import {
   buildCommandCenterViewModel,
   formatCalendarDate,
+  getCommandCenterStatusPresentation,
   resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "./command-center";
+import { buildProcessRequestBody } from "@/lib/yoxa/process-request";
 
 function buildAggregate(overrides: Partial<CaseAggregate> = {}): CaseAggregate {
   return {
@@ -478,5 +480,40 @@ describe("buildCommandCenterViewModel", () => {
 
     expect(viewModel.resolutionGraph.record).toBeNull();
     expect(viewModel.resolutionGraph.availability).toBe("unavailable");
+  });
+});
+
+describe("getCommandCenterStatusPresentation", () => {
+  it("uses the aggregate resolution graph when deriving the next process action", () => {
+    const presentation = getCommandCenterStatusPresentation(
+      buildAggregate({
+        status: "WAITING_FOR_EVIDENCE",
+        case: {
+          ...buildAggregate().case,
+          currentCaseStatus: "WAITING_FOR_EVIDENCE",
+        },
+        resolutionGraph: {
+          id: "graph-row-1",
+          graphId: "graph-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          graphState: "RESOLVABLE_MISSING_EVIDENCE",
+          dependencyNodes: [],
+          unresolvedDependencies: ["dep-1"],
+          postAuthorisationConditions: [],
+          stateReasonCodes: ["RESOLVABLE_EVIDENCE_GAPS"],
+          nextSafeAction: "REQUEST_MINIMUM_EVIDENCE",
+          sourceReportVersions: { policy: "policy-v1" },
+          createdAt: "2026-08-24T10:50:00.000Z",
+        },
+      })
+    );
+
+    expect(presentation.nextActionLabel).toBe("RE-EVALUATE CASE");
+    expect(presentation.targetWorkflowKey).toBe("materialChange");
+    expect(buildProcessRequestBody(presentation.targetWorkflowKey!)).toEqual({
+      workflowKey: "materialChange",
+    });
   });
 });

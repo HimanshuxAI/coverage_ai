@@ -157,6 +157,55 @@ describe("POST /api/cases/[caseId]/process", () => {
     expect(triggerYoxaWorkflow).not.toHaveBeenCalled();
   });
 
+  it("does not read resolution_graphs for statuses whose next workflow is status-only", async () => {
+    const supabaseClient = buildSupabaseClient({
+      currentCaseStatus: "AUTHORISED_BY_HUMAN",
+    });
+    createClient.mockResolvedValue(supabaseClient);
+    getOrCreateWorkflowRun.mockResolvedValue({
+      run: {
+        id: "run-123",
+        idempotency_key: "wf_discharge_case-123_1",
+        status: "RUNNING",
+      },
+      isExisting: true,
+    });
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "discharge" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(200);
+    expect(supabaseClient.from).not.toHaveBeenCalledWith("resolution_graphs");
+  });
+
+  it("returns 502 RESOLUTION_GRAPH_READ_FAILED when a graph-dependent status cannot read its resolution graph", async () => {
+    createClient.mockResolvedValue(
+      buildSupabaseClient({
+        currentCaseStatus: "WAITING_FOR_EVIDENCE",
+        resolutionGraphResult: {
+          data: null,
+          error: { message: "graph read down" },
+        },
+      })
+    );
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "materialChange" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(502);
+    await expect(response.json()).resolves.toMatchObject({
+      success: false,
+      error: {
+        code: "RESOLUTION_GRAPH_READ_FAILED",
+      },
+    });
+    expect(getOrCreateWorkflowRun).not.toHaveBeenCalled();
+    expect(updateWorkflowRunState).not.toHaveBeenCalled();
+    expect(triggerYoxaWorkflow).not.toHaveBeenCalled();
+  });
+
   it("passes a valid workflowKey to the first orchestration boundary without triggering Yoxa", async () => {
     createClient.mockResolvedValue(buildSupabaseClient());
     getOrCreateWorkflowRun.mockResolvedValue({

@@ -28,6 +28,10 @@ export type NextWorkflowAssertionResult =
       error: InvalidNextWorkflowError;
     };
 
+export function caseStatusRequiresResolutionGraph(caseStatus: string): boolean {
+  return caseStatus === "WAITING_FOR_EVIDENCE";
+}
+
 function isMaterialChangeGraphState(graphState: string | null): boolean {
   return graphState === "HUMAN_AMBIGUITY" || graphState === "RESOLVABLE_MISSING_EVIDENCE";
 }

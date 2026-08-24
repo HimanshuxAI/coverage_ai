@@ -1,3 +1,5 @@
+import { getStatusPresentation, type StatusPresentation } from "@/lib/workflow/presentation";
+
 import type { ApiEnvelope, CaseAggregate } from "./contracts";
 
 export type CommandCenterLoadState = "loading" | "ready" | "stale" | "noRecord" | "error";
@@ -319,6 +321,12 @@ export function formatCalendarDate(value: string | null): string {
   }
 
   return `${Number(day)} ${MONTHS[monthIndex]} ${year}`;
+}
+
+export function getCommandCenterStatusPresentation(aggregate: CaseAggregate): StatusPresentation {
+  return getStatusPresentation(aggregate.status, aggregate.resolutionGraph
+    ? { graphState: aggregate.resolutionGraph.graphState }
+    : null);
 }
 
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {

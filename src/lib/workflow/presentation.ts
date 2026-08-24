@@ -3,6 +3,7 @@
    Centralized status presentation system for Operations Dashboard & Command Center.
    ====================================================== */
 
+import type { YoxaWorkflowKey } from "@/lib/yoxa/types";
 import { getNextWorkflowKey, type NextActionResolutionGraph } from "./next-action";
 
 export interface StatusPresentation {
@@ -12,7 +13,7 @@ export interface StatusPresentation {
   badgeText: string;
   description: string;
   nextActionLabel: string | null;
-  targetWorkflowKey: "intake" | "preauth" | "materialChange" | "discharge" | "settlement" | "appeal" | null;
+  targetWorkflowKey: YoxaWorkflowKey | null;
 }
 
 export function getStatusPresentation(

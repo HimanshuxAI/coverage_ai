@@ -8,10 +8,10 @@ import {
   buildCommandCenterViewModel,
   type CommandCenterLoadState,
   formatCalendarDate,
+  getCommandCenterStatusPresentation,
   resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "@/lib/cases/command-center";
-import { getStatusPresentation } from "@/lib/workflow/presentation";
 import { buildProcessRequestBody, canRenderProcessAction } from "@/lib/yoxa/process-request";
 import styles from "@/components/landing/landing.module.css";
 
@@ -104,7 +104,7 @@ function getStatusBadge(loadState: CommandCenterLoadState, caseData: CaseAggrega
   }
 
   if (caseData) {
-    const presentation = getStatusPresentation(caseData.status);
+    const presentation = getCommandCenterStatusPresentation(caseData);
     return {
       label: presentation.label,
       badgeBg: presentation.badgeBg,
@@ -295,7 +295,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
   const viewModel = caseData ? buildCommandCenterViewModel(caseData) : null;
   const statusBadge = getStatusBadge(loadState, caseData);
-  const statusPresentation = caseData ? getStatusPresentation(caseData.status) : null;
+  const statusPresentation = caseData ? getCommandCenterStatusPresentation(caseData) : null;
   const showProcessAction =
     caseData !== null &&
     statusPresentation !== null &&

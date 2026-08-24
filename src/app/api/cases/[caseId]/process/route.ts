@@ -8,7 +8,10 @@ import { createClient } from "@/utils/supabase/server";
 import { getOrCreateWorkflowRun, updateWorkflowRunState } from "@/lib/yoxa/runs";
 import { triggerYoxaWorkflow } from "@/lib/yoxa/client";
 import { parseProcessRequest } from "@/lib/yoxa/process-request";
-import { assertRequestedWorkflowIsNext } from "@/lib/workflow/next-action";
+import {
+  assertRequestedWorkflowIsNext,
+  caseStatusRequiresResolutionGraph,
+} from "@/lib/workflow/next-action";
 
 export async function POST(
   request: NextRequest,
@@ -50,25 +53,32 @@ export async function POST(
     }
 
     const { workflowKey } = parsedRequest;
-    const { data: resolutionGraph, error: resolutionGraphError } = await supabase
-      .from("resolution_graphs")
-      .select("graph_state")
-      .eq("case_id", caseId)
-      .order("graph_version", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const requiresResolutionGraph = caseStatusRequiresResolutionGraph(caseRecord.current_case_status);
+    let resolutionGraph: { graph_state: string } | null = null;
 
-    if (resolutionGraphError) {
-      return NextResponse.json(
-        {
-          success: false,
-          error: {
-            code: "RESOLUTION_GRAPH_READ_FAILED",
-            message: `Failed to read resolution graph for case ${caseId}`,
+    if (requiresResolutionGraph) {
+      const { data, error: resolutionGraphError } = await supabase
+        .from("resolution_graphs")
+        .select("graph_state")
+        .eq("case_id", caseId)
+        .order("graph_version", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (resolutionGraphError) {
+        return NextResponse.json(
+          {
+            success: false,
+            error: {
+              code: "RESOLUTION_GRAPH_READ_FAILED",
+              message: `Failed to read resolution graph for case ${caseId}`,
+            },
           },
-        },
-        { status: 502 }
-      );
+          { status: 502 }
+        );
+      }
+
+      resolutionGraph = data;
     }
 
     const nextWorkflowAssertion = assertRequestedWorkflowIsNext(workflowKey, {
