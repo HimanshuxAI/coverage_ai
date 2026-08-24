@@ -45,6 +45,7 @@ export interface DashboardActionFeedback {
 }
 
 const DECISION_READY_FILTER_STATUSES = new Set<CaseRecord["current_case_status"]>([
+  "ACTIVATED_VALIDATED",
   "DECISION_READY",
 ]);
 
@@ -55,7 +56,6 @@ const AUTHORISED_FILTER_STATUSES = new Set<CaseRecord["current_case_status"]>([
 const EXCEPTION_FILTER_STATUSES = new Set<CaseRecord["current_case_status"]>([
   "HUMAN_AMBIGUITY",
   "TOOL_FAILURE",
-  "DECLINED_OR_REDUCED_BY_HUMAN",
 ]);
 
 function normalizeSearchTerm(searchTerm: string): string[] {

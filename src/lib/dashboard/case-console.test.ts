@@ -66,9 +66,11 @@ describe("buildDashboardCaseConsole", () => {
   it("derives filter counts from persisted case statuses and applies the selected filter", () => {
     const cases = [
       makeCaseRecord("WAITING_FOR_ACTIVATION", { case_id: "CASE-ACTIVE-001" }),
+      makeCaseRecord("ACTIVATED_VALIDATED", { case_id: "CASE-READY-000" }),
       makeCaseRecord("DECISION_READY", { case_id: "CASE-READY-001" }),
       makeCaseRecord("AUTHORISED_BY_HUMAN", { case_id: "CASE-AUTH-001" }),
       makeCaseRecord("TOOL_FAILURE", { case_id: "CASE-EXCEPTION-001" }),
+      makeCaseRecord("DECLINED_OR_REDUCED_BY_HUMAN", { case_id: "CASE-DECLINED-001" }),
     ];
 
     const consoleState = buildDashboardCaseConsole(cases, {
@@ -76,14 +78,28 @@ describe("buildDashboardCaseConsole", () => {
     });
 
     expect(consoleState.filterCounts).toMatchObject({
-      ALL: 4,
-      ACTIVE: 3,
-      DECISION_READY: 1,
+      ALL: 6,
+      ACTIVE: 4,
+      DECISION_READY: 2,
       AUTHORISED: 1,
       EXCEPTION: 1,
     });
     expect(consoleState.visibleCases.map(({ case_id }) => case_id)).toEqual([
       "CASE-EXCEPTION-001",
+    ]);
+  });
+
+  it("keeps declined terminal decisions out of the exception bucket", () => {
+    const consoleState = buildDashboardCaseConsole([
+      makeCaseRecord("DECLINED_OR_REDUCED_BY_HUMAN", { case_id: "CASE-DECLINED-001" }),
+      makeCaseRecord("HUMAN_AMBIGUITY", { case_id: "CASE-AMBIGUITY-001" }),
+    ], {
+      statusFilter: "EXCEPTION",
+    });
+
+    expect(consoleState.filterCounts.EXCEPTION).toBe(1);
+    expect(consoleState.visibleCases.map(({ case_id }) => case_id)).toEqual([
+      "CASE-AMBIGUITY-001",
     ]);
   });
 
