@@ -5,6 +5,8 @@ import {
   buildCommandCenterViewModel,
   formatCalendarDate,
   getCommandCenterStatusPresentation,
+  getCommandCenterPacketAction,
+  getCommandCenterSafeCopyFields,
   resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "./command-center";
@@ -924,6 +926,86 @@ describe("buildCommandCenterViewModel", () => {
         recordedAt: "2026-08-24T10:31:30.000Z",
         actor: "SYSTEM",
       },
+    ]);
+  });
+});
+
+describe("getCommandCenterPacketAction", () => {
+  it("returns an open action when a persisted packet pdf URL exists", () => {
+    const aggregate = buildAggregate({
+      latestPacket: {
+        id: "packet-row-1",
+        packetId: "packet-1",
+        caseId: "CASE-CT-REAL-001",
+        caseVersion: 7,
+        graphVersion: 3,
+        generatedAt: "2026-08-24T10:53:00.000Z",
+        pdfUrl: "https://example.com/packet.pdf",
+      },
+    });
+
+    expect(getCommandCenterPacketAction(aggregate.latestPacket)).toEqual({
+      kind: "open",
+      href: "https://example.com/packet.pdf",
+      label: "OPEN PACKET PDF",
+    });
+  });
+
+  it("returns a print action when a persisted packet exists without a pdf URL", () => {
+    const aggregate = buildAggregate({
+      latestPacket: {
+        id: "packet-row-1",
+        packetId: "packet-1",
+        caseId: "CASE-CT-REAL-001",
+        caseVersion: 7,
+        graphVersion: 3,
+        generatedAt: "2026-08-24T10:53:00.000Z",
+        pdfUrl: null,
+      },
+    });
+
+    expect(getCommandCenterPacketAction(aggregate.latestPacket)).toEqual({
+      kind: "print",
+      label: "PRINT OR SAVE PDF",
+    });
+  });
+
+  it("returns no packet action when no persisted packet record exists", () => {
+    expect(getCommandCenterPacketAction(buildAggregate().latestPacket)).toBeNull();
+  });
+});
+
+describe("getCommandCenterSafeCopyFields", () => {
+  it("includes only safe visible identifiers from the case record and selected workflow run", () => {
+    const aggregate = buildAggregate({
+      workflowRuns: [buildWorkflowRun("RUNNING")],
+    });
+    const selectedWorkflowRun = buildCommandCenterViewModel(aggregate).workflow.runs[0];
+
+    expect(getCommandCenterSafeCopyFields(aggregate.case, selectedWorkflowRun)).toEqual([
+      { key: "caseId", label: "Case ID", value: "CASE-CT-REAL-001" },
+      { key: "memberId", label: "Member ID", value: "MEM-001" },
+      { key: "policyId", label: "Policy ID", value: "POL-001" },
+      { key: "providerId", label: "Provider ID", value: "HOSP-001" },
+      { key: "localRunId", label: "Local run ID", value: "run-1" },
+      { key: "yoxaExecutionId", label: "Yoxa execution ID", value: "yoxa-run-1" },
+      { key: "idempotencyKey", label: "Idempotency key", value: "idem-1" },
+    ]);
+  });
+
+  it("omits workflow identifiers that are not visibly recorded", () => {
+    const aggregate = buildAggregate({
+      workflowRuns: [buildWorkflowRun("QUEUED")],
+    });
+    const selectedWorkflowRun = buildCommandCenterViewModel(aggregate).workflow.runs[0];
+
+    expect(getCommandCenterSafeCopyFields(aggregate.case, selectedWorkflowRun)).toEqual([
+      { key: "caseId", label: "Case ID", value: "CASE-CT-REAL-001" },
+      { key: "memberId", label: "Member ID", value: "MEM-001" },
+      { key: "policyId", label: "Policy ID", value: "POL-001" },
+      { key: "providerId", label: "Provider ID", value: "HOSP-001" },
+      { key: "localRunId", label: "Local run ID", value: "run-1" },
+      { key: "idempotencyKey", label: "Idempotency key", value: "idem-1" },
     ]);
   });
 });

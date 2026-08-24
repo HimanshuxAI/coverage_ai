@@ -7,9 +7,12 @@ import { createActiveRefreshController } from "@/lib/cases/active-refresh";
 import type { CaseAggregate } from "@/lib/cases/contracts";
 import {
   buildCommandCenterViewModel,
+  type CommandCenterCopyField,
   type CommandCenterLoadState,
   formatCalendarDate,
   getCommandCenterStatusPresentation,
+  getCommandCenterPacketAction,
+  getCommandCenterSafeCopyFields,
   resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "@/lib/cases/command-center";
@@ -206,12 +209,15 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const [loadState, setLoadState] = useState<CommandCenterLoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
   const [liveUpdateInterrupted, setLiveUpdateInterrupted] = useState(false);
+  const [copiedFieldKey, setCopiedFieldKey] = useState<CommandCenterCopyField["key"] | null>(null);
   const caseDataRef = useRef<CaseAggregate | null>(null);
   const refreshControllerRef = useRef<ReturnType<typeof createActiveRefreshController<CaseAggregate>> | null>(
     null
   );
+  const copyFeedbackTimeoutRef = useRef<number | null>(null);
 
   function applyCaseAggregate(nextCaseData: CaseAggregate) {
     const nextSnapshot = resolveCaseAggregateSnapshot({
@@ -330,6 +336,31 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     refreshControllerRef.current?.update(caseData);
   }, [caseData]);
 
+  useEffect(() => {
+    if (!selectedWorkflowRunId) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setSelectedWorkflowRunId(null);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [selectedWorkflowRunId]);
+
+  useEffect(() => {
+    return () => {
+      if (copyFeedbackTimeoutRef.current !== null) {
+        window.clearTimeout(copyFeedbackTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const viewModel = caseData ? buildCommandCenterViewModel(caseData) : null;
   const statusBadge = getStatusBadge(loadState, caseData);
   const statusPresentation = caseData ? getCommandCenterStatusPresentation(caseData) : null;
@@ -341,6 +372,54 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     caseData !== null &&
     statusPresentation !== null &&
     canRenderProcessAction(statusPresentation.nextActionLabel, statusPresentation.targetWorkflowKey);
+  const safeCopyFields = viewModel
+    ? getCommandCenterSafeCopyFields(viewModel.caseRecord, selectedWorkflowRun)
+    : [{ key: "caseId", label: "Case ID", value: caseId } satisfies CommandCenterCopyField];
+  const safeCopyFieldByKey = new Map(safeCopyFields.map((field) => [field.key, field] as const));
+  const packetAction = viewModel ? getCommandCenterPacketAction(viewModel.packet.record) : null;
+
+  function resetCopyFeedback(fieldKey: CommandCenterCopyField["key"]) {
+    if (copyFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(copyFeedbackTimeoutRef.current);
+    }
+
+    setCopiedFieldKey(fieldKey);
+    copyFeedbackTimeoutRef.current = window.setTimeout(() => {
+      setCopiedFieldKey((current) => (current === fieldKey ? null : current));
+      copyFeedbackTimeoutRef.current = null;
+    }, 2000);
+  }
+
+  async function handleCopyField(fieldKey: CommandCenterCopyField["key"]) {
+    const field = safeCopyFieldByKey.get(fieldKey);
+
+    if (!field || !navigator.clipboard?.writeText) {
+      setError("Copy is unavailable in this browser session.");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(field.value);
+      setError(null);
+      resetCopyFeedback(field.key);
+    } catch {
+      setError("Copy failed. Please retry from a supported browser session.");
+    }
+  }
+
+  async function handleManualRefresh() {
+    if (manualRefreshing) {
+      return;
+    }
+
+    setManualRefreshing(true);
+
+    try {
+      await refreshCaseDetails({ showLoading: caseDataRef.current === null });
+    } finally {
+      setManualRefreshing(false);
+    }
+  }
 
   async function handleProcessCase() {
     if (processing || caseData === null || statusPresentation === null || !statusPresentation.targetWorkflowKey) {
@@ -382,6 +461,42 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           viewModel.decision.record.authorisedAmount,
           viewModel.decision.record.currency
         );
+  const refreshLabel =
+    manualRefreshing
+      ? "REFRESHING AGGREGATE..."
+      : error || liveUpdateInterrupted
+        ? "RETRY AGGREGATE FETCH"
+        : "REFRESH AGGREGATE";
+
+  function renderCopyButton(fieldKey: CommandCenterCopyField["key"]) {
+    const field = safeCopyFieldByKey.get(fieldKey);
+
+    if (!field) {
+      return null;
+    }
+
+    return (
+      <button
+        type="button"
+        onClick={() => void handleCopyField(field.key)}
+        style={{
+          marginLeft: 8,
+          border: "1px solid var(--grid)",
+          background: copiedFieldKey === field.key ? "var(--forest)" : "transparent",
+          color: copiedFieldKey === field.key ? "var(--lime)" : "var(--forest)",
+          padding: "2px 6px",
+          fontSize: "10px",
+          fontWeight: 800,
+          letterSpacing: "0.08em",
+          textTransform: "uppercase",
+          cursor: "pointer",
+        }}
+        aria-label={`Copy ${field.label}`}
+      >
+        {copiedFieldKey === field.key ? "COPIED" : "COPY"}
+      </button>
+    );
+  }
 
   return (
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
@@ -452,38 +567,67 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: "13px", color: "var(--muted)", flexWrap: "wrap" }}>
                 <span>
                   CASE: <strong style={{ color: "var(--ink)" }}>{caseId}</strong>
+                  {renderCopyButton("caseId")}
                 </span>
                 <span>
                   MEMBER:{" "}
                   <strong style={{ color: "var(--ink)" }}>
                     {viewModel?.caseRecord.memberId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
+                  {renderCopyButton("memberId")}
                 </span>
                 <span>
                   POLICY:{" "}
                   <strong style={{ color: "var(--ink)" }}>
                     {viewModel?.caseRecord.policyId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
+                  {renderCopyButton("policyId")}
                 </span>
                 <span>
                   PROVIDER:{" "}
                   <strong style={{ color: "var(--ink)" }}>
                     {viewModel?.caseRecord.hospitalId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
+                  {renderCopyButton("providerId")}
                 </span>
               </div>
             </div>
 
-            {showProcessAction && statusPresentation !== null && (
+            <div
+              style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}
+            >
               <button
-                onClick={() => void handleProcessCase()}
-                disabled={processing}
-                className={styles.btnPrimary}
-                style={{ opacity: processing ? 0.6 : 1, cursor: processing ? "not-allowed" : "pointer" }}
+                type="button"
+                onClick={() => void handleManualRefresh()}
+                disabled={manualRefreshing}
+                style={{
+                  border: "1px solid var(--forest)",
+                  background: "transparent",
+                  color: "var(--forest)",
+                  padding: "10px 14px",
+                  fontSize: "11px",
+                  fontWeight: 800,
+                  letterSpacing: "0.14em",
+                  textTransform: "uppercase",
+                  cursor: manualRefreshing ? "progress" : "pointer",
+                  opacity: manualRefreshing ? 0.7 : 1,
+                }}
               >
-                {processing ? "SUBMITTING REQUEST..." : `${statusPresentation.nextActionLabel!} →`}
+                {refreshLabel}
               </button>
-            )}
+
+              {showProcessAction && statusPresentation !== null && (
+                <button
+                  type="button"
+                  onClick={() => void handleProcessCase()}
+                  disabled={processing}
+                  className={styles.btnPrimary}
+                  style={{ opacity: processing ? 0.6 : 1, cursor: processing ? "not-allowed" : "pointer" }}
+                >
+                  {processing ? "SUBMITTING REQUEST..." : `${statusPresentation.nextActionLabel!} →`}
+                </button>
+              )}
+            </div>
           </div>
         </div>
 
@@ -849,22 +993,28 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
           {viewModel && viewModel.workflow.runs.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>
-                  {viewModel.workflow.runs.map((workflowRun, index) => (
-                    <div
-                      key={workflowRun.id}
-                      onClick={() => setSelectedWorkflowRunId(workflowRun.id)}
-                      style={{
-                        background: "var(--bg)",
-                        border: "1px solid var(--grid)",
+              {viewModel.workflow.runs.map((workflowRun, index) => (
+                <button
+                  key={workflowRun.id}
+                  type="button"
+                  onClick={() => setSelectedWorkflowRunId(workflowRun.id)}
+                  aria-pressed={selectedWorkflowRunId === workflowRun.id}
+                  aria-controls={selectedWorkflowRunId === workflowRun.id ? "workflow-run-inspector" : undefined}
+                  style={{
+                    appearance: "none",
+                    textAlign: "left",
+                    background: "var(--bg)",
+                    border:
+                      selectedWorkflowRunId === workflowRun.id
+                        ? "1px solid var(--forest)"
+                        : "1px solid var(--grid)",
+                    boxShadow:
+                      selectedWorkflowRunId === workflowRun.id
+                        ? "inset 0 0 0 1px var(--forest)"
+                        : "none",
                     padding: 16,
                     cursor: "pointer",
-                    transition: "border-color 0.15s ease",
-                  }}
-                  onMouseEnter={(event) => {
-                    event.currentTarget.style.borderColor = "var(--forest)";
-                  }}
-                  onMouseLeave={(event) => {
-                    event.currentTarget.style.borderColor = "var(--grid)";
+                    transition: "border-color 0.15s ease, box-shadow 0.15s ease",
                   }}
                 >
                   <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--forest)" }}>
@@ -908,7 +1058,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                       </div>
                     ))}
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           ) : (
@@ -918,16 +1068,31 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           )}
 
           {selectedWorkflowRun && (
-            <div style={{ marginTop: 24, padding: 20, background: "var(--bg)", border: "1px solid var(--forest)" }}>
+            <div
+              id="workflow-run-inspector"
+              role="region"
+              aria-label="Technical workflow run inspection"
+              style={{ marginTop: 24, padding: 20, background: "var(--bg)", border: "1px solid var(--forest)" }}
+            >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ fontSize: "11px", fontWeight: 800, color: "var(--forest)", letterSpacing: "0.14em" }}>
                   TECHNICAL WORKFLOW RUN INSPECTION
                 </span>
                 <button
+                  type="button"
                   onClick={() => setSelectedWorkflowRunId(null)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}
+                  aria-label="Close workflow run inspector"
+                  style={{
+                    background: "none",
+                    border: "1px solid var(--grid)",
+                    cursor: "pointer",
+                    fontWeight: 800,
+                    letterSpacing: "0.08em",
+                    padding: "4px 8px",
+                    textTransform: "uppercase",
+                  }}
                 >
-                  X
+                  CLOSE
                 </button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 12, fontSize: "12px" }}>
@@ -945,13 +1110,16 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 </div>
                 <div>
                   Local run ID: <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.localRunId}</code>
+                  {renderCopyButton("localRunId")}
                 </div>
                 <div>
                   Yoxa run ID:{" "}
                   <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.yoxaExecutionId}</code>
+                  {renderCopyButton("yoxaExecutionId")}
                 </div>
                 <div>
                   Idempotency key: <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.idempotencyKey}</code>
+                  {renderCopyButton("idempotencyKey")}
                 </div>
                 <div>Attempt: <strong>{selectedWorkflowRun.inspector.attempt}</strong></div>
                 <div>Terminal state: <strong>{selectedWorkflowRun.inspector.terminalState}</strong></div>
@@ -1036,19 +1204,58 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 ? `Generated ${formatDateTime(viewModel.packet.record.generatedAt)}`
                 : summaryStateMessage ?? "No durable decision packet has been recorded for this case."}
             </p>
-            <div
-              style={{
-                display: "inline-block",
-                background: "var(--bg)",
-                border: "1px solid var(--forest)",
-                padding: "6px 12px",
-                fontSize: "11px",
-                fontWeight: 700,
-                color: "var(--forest)",
-              }}
-            >
-              {viewModel?.packet.record?.pdfUrl ? "PACKET RECORDED WITH PDF" : summaryStateMessage ?? "NO PACKET PDF RECORDED"}
-            </div>
+            {packetAction ? (
+              packetAction.kind === "open" ? (
+                <a
+                  href={packetAction.href}
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    display: "inline-block",
+                    background: "var(--bg)",
+                    border: "1px solid var(--forest)",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "var(--forest)",
+                    textDecoration: "none",
+                  }}
+                >
+                  {packetAction.label}
+                </a>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => window.print()}
+                  style={{
+                    display: "inline-block",
+                    background: "var(--bg)",
+                    border: "1px solid var(--forest)",
+                    padding: "6px 12px",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    color: "var(--forest)",
+                    cursor: "pointer",
+                  }}
+                >
+                  {packetAction.label}
+                </button>
+              )
+            ) : (
+              <div
+                style={{
+                  display: "inline-block",
+                  background: "var(--bg)",
+                  border: "1px solid var(--forest)",
+                  padding: "6px 12px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--forest)",
+                }}
+              >
+                {summaryStateMessage ?? "NO PACKET RECORD"}
+              </div>
+            )}
           </div>
         </div>
       </main>

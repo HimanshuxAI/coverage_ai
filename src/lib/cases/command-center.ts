@@ -57,6 +57,30 @@ export interface CommandCenterProofStripItem {
   tone: WorkflowStatusTone;
 }
 
+export interface CommandCenterCopyField {
+  key:
+    | "caseId"
+    | "memberId"
+    | "policyId"
+    | "providerId"
+    | "localRunId"
+    | "yoxaExecutionId"
+    | "idempotencyKey";
+  label: string;
+  value: string;
+}
+
+export type CommandCenterPacketAction =
+  | {
+      kind: "open";
+      href: string;
+      label: "OPEN PACKET PDF";
+    }
+  | {
+      kind: "print";
+      label: "PRINT OR SAVE PDF";
+    };
+
 export interface CommandCenterWorkflowRunInspector {
   workflowName: string;
   workflowKey: string;
@@ -515,6 +539,70 @@ function buildWorkflowRunViewModel(
     proofStrip: buildWorkflowProofStrip(run.executionProof, statusPresentation),
     inspector: buildWorkflowInspector(run, status, statusPresentation),
   };
+}
+
+function appendSafeCopyField(
+  fields: CommandCenterCopyField[],
+  field: CommandCenterCopyField | null
+): void {
+  if (field && field.value !== NOT_RECORDED) {
+    fields.push(field);
+  }
+}
+
+export function getCommandCenterPacketAction(
+  packetRecord: CaseAggregate["latestPacket"]
+): CommandCenterPacketAction | null {
+  if (!packetRecord) {
+    return null;
+  }
+
+  if (packetRecord.pdfUrl) {
+    return {
+      kind: "open",
+      href: packetRecord.pdfUrl,
+      label: "OPEN PACKET PDF",
+    };
+  }
+
+  return {
+    kind: "print",
+    label: "PRINT OR SAVE PDF",
+  };
+}
+
+export function getCommandCenterSafeCopyFields(
+  caseRecord: CaseAggregate["case"],
+  selectedWorkflowRun: CommandCenterWorkflowRunViewModel | null
+): CommandCenterCopyField[] {
+  const fields: CommandCenterCopyField[] = [
+    { key: "caseId", label: "Case ID", value: caseRecord.caseId },
+    { key: "memberId", label: "Member ID", value: caseRecord.memberId },
+    { key: "policyId", label: "Policy ID", value: caseRecord.policyId },
+    { key: "providerId", label: "Provider ID", value: caseRecord.hospitalId },
+  ];
+
+  if (!selectedWorkflowRun) {
+    return fields;
+  }
+
+  appendSafeCopyField(fields, {
+    key: "localRunId",
+    label: "Local run ID",
+    value: selectedWorkflowRun.inspector.localRunId,
+  });
+  appendSafeCopyField(fields, {
+    key: "yoxaExecutionId",
+    label: "Yoxa execution ID",
+    value: selectedWorkflowRun.inspector.yoxaExecutionId,
+  });
+  appendSafeCopyField(fields, {
+    key: "idempotencyKey",
+    label: "Idempotency key",
+    value: selectedWorkflowRun.inspector.idempotencyKey,
+  });
+
+  return fields;
 }
 
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {
