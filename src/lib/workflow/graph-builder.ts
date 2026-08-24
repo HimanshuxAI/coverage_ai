@@ -214,7 +214,6 @@ export function buildResolutionGraph(input: GraphBuildInput): GraphBuildResult {
 }
 
 function buildSourceVersions(input: GraphBuildInput): Record<string, string> {
-  const pf = input.policy_evidence.findings as PolicyFindings;
   const cf = input.clinical_evidence.findings as ClinicalFindings;
   const ccf = input.cost_contract_evidence.findings as CostContractFindings;
 

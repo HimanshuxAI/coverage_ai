@@ -5,7 +5,7 @@ import { generateAgentRunId, generateAuditEventId } from "@/lib/workflow/validat
 export async function POST(request: NextRequest) {
   try {
     const payload = await request.json();
-    const { case_id, resolved_dependencies, reviewer_identity, outcome, written_reason } = payload;
+    const { case_id, resolved_dependencies, reviewer_identity, outcome } = payload;
     
     if (!case_id || !reviewer_identity || !outcome) {
       return NextResponse.json(

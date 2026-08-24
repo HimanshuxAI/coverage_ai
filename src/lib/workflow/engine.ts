@@ -6,7 +6,6 @@
 import type {
   CaseStatus,
   WorkflowStep,
-  WorkflowStepResult,
 } from "@/types/workflow";
 
 // ─── Step Ordering ───
