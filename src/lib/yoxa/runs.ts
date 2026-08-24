@@ -110,7 +110,7 @@ export async function updateWorkflowRunState(
     patch.yoxa_execution_id = yoxaExecutionId;
   }
 
-  if (updates.status === "RUNNING" || updates.status === "TRIGGERING") {
+  if (updates.status === "TRIGGERING") {
     patch.started_at = new Date().toISOString();
   } else if (updates.status === "COMPLETED") {
     patch.completed_at = new Date().toISOString();

@@ -2,7 +2,6 @@ import type { WorkflowRunRow } from "@/lib/cases/contracts";
 import type { WorkflowRunRecord } from "./types";
 
 export type ExecutionProofState =
-  | "accepted"
   | "resume-tracking"
   | "completed"
   | "failed"
@@ -126,10 +125,6 @@ function normalizeState(
     return "failed";
   }
 
-  if (readUpstreamStatusCode(run.raw_response) === 202) {
-    return "accepted";
-  }
-
   switch (run.status) {
     case "QUEUED":
       return "queued";
@@ -142,7 +137,7 @@ function normalizeState(
     case "CANCELLED":
       return "cancelled";
     default:
-      return "running";
+      return "queued";
   }
 }
 

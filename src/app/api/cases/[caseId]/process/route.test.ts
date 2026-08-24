@@ -316,7 +316,7 @@ describe("POST /api/cases/[caseId]/process", () => {
       data: {
         caseId: "case-123",
         executionProof: {
-          state: "accepted",
+          state: "running",
           acceptedResponse: {
             upstreamStatusCode: 202,
             accepted: true,

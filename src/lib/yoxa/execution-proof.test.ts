@@ -39,11 +39,11 @@ function buildWorkflowRunRow(overrides: Partial<WorkflowRunRow> = {}): WorkflowR
 }
 
 describe("buildExecutionProof", () => {
-  it("maps an accepted 202 trigger to accepted proof instead of completed proof", () => {
+  it("keeps the persisted lifecycle state even when the raw response recorded an accepted 202", () => {
     const proof = buildExecutionProof(buildWorkflowRunRow());
 
     expect(proof).toMatchObject({
-      state: "accepted",
+      state: "running",
       durableRun: {
         workflowRunId: "run-accepted-1",
         idempotencyKey: "idem-1",
@@ -80,11 +80,33 @@ describe("buildExecutionProof", () => {
     );
 
     expect(proof).toMatchObject({
-      state: "accepted",
+      state: "running",
       acceptedResponse: {
         upstreamStatusCode: 202,
         accepted: true,
         yoxaExecutionId: null,
+      },
+    });
+  });
+
+  it("uses the persisted cancelled lifecycle state over historical accepted-response evidence", () => {
+    const proof = buildExecutionProof(
+      buildWorkflowRunRow({
+        status: "CANCELLED",
+        failed_at: null,
+        completed_at: null,
+      })
+    );
+
+    expect(proof).toMatchObject({
+      state: "cancelled",
+      acceptedResponse: {
+        upstreamStatusCode: 202,
+        accepted: true,
+      },
+      currentRun: {
+        status: "CANCELLED",
+        terminal: true,
       },
     });
   });

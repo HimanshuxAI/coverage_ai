@@ -87,6 +87,164 @@ describe("unwrapCaseAggregateEnvelope", () => {
     expect(unwrapCaseAggregateEnvelope(malformedAuditEnvelope)).toBeNull();
   });
 
+  it("rejects workflow runs that omit executionProof or contain malformed proof", () => {
+    const aggregate = buildAggregate();
+    const missingProofEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [
+          {
+            id: "run-1",
+            caseId: "CASE-CT-REAL-001",
+            workflowKey: "preauth",
+            workflowName: "Pre-auth",
+            yoxaExecutionId: "yoxa-run-1",
+            idempotencyKey: "idem-1",
+            status: "RUNNING",
+            attempt: 1,
+            inputPayload: { workflowKey: "preauth" },
+            rawResponse: null,
+            normalizedOutput: null,
+            errorCode: null,
+            errorMessage: null,
+            queuedAt: "2026-08-24T10:30:00.000Z",
+            startedAt: "2026-08-24T10:31:00.000Z",
+            completedAt: null,
+            failedAt: null,
+            createdAt: "2026-08-24T10:30:00.000Z",
+            updatedAt: "2026-08-24T10:32:00.000Z",
+          },
+        ],
+      },
+    };
+    const malformedProofEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [
+          {
+            id: "run-1",
+            caseId: "CASE-CT-REAL-001",
+            workflowKey: "preauth",
+            workflowName: "Pre-auth",
+            yoxaExecutionId: "yoxa-run-1",
+            idempotencyKey: "idem-1",
+            status: "RUNNING",
+            attempt: 1,
+            inputPayload: { workflowKey: "preauth" },
+            rawResponse: null,
+            normalizedOutput: null,
+            errorCode: null,
+            errorMessage: null,
+            queuedAt: "2026-08-24T10:30:00.000Z",
+            startedAt: "2026-08-24T10:31:00.000Z",
+            completedAt: null,
+            failedAt: null,
+            createdAt: "2026-08-24T10:30:00.000Z",
+            updatedAt: "2026-08-24T10:32:00.000Z",
+            executionProof: {
+              state: "running",
+              durableRun: {
+                workflowRunId: "run-1",
+                idempotencyKey: "idem-1",
+                persistedAt: "2026-08-24T10:30:00.000Z",
+                queuedAt: "2026-08-24T10:30:00.000Z",
+              },
+              requestDispatch: {
+                dispatched: "yes",
+                dispatchedAt: "2026-08-24T10:31:00.000Z",
+              },
+              acceptedResponse: {
+                accepted: true,
+                upstreamStatusCode: 202,
+                yoxaExecutionId: "yoxa-run-1",
+              },
+              currentRun: {
+                status: "RUNNING",
+                terminal: false,
+                startedAt: "2026-08-24T10:31:00.000Z",
+                completedAt: null,
+                failedAt: null,
+                updatedAt: "2026-08-24T10:32:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    };
+
+    expect(unwrapCaseAggregateEnvelope(missingProofEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(malformedProofEnvelope)).toBeNull();
+  });
+
+  it("accepts workflow runs with a valid executionProof contract", () => {
+    const aggregate = buildAggregate();
+    const validEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [
+          {
+            id: "run-1",
+            caseId: "CASE-CT-REAL-001",
+            workflowKey: "preauth",
+            workflowName: "Pre-auth",
+            yoxaExecutionId: "yoxa-run-1",
+            idempotencyKey: "idem-1",
+            status: "RUNNING",
+            attempt: 1,
+            inputPayload: { workflowKey: "preauth" },
+            rawResponse: null,
+            normalizedOutput: null,
+            errorCode: null,
+            errorMessage: null,
+            queuedAt: "2026-08-24T10:30:00.000Z",
+            startedAt: "2026-08-24T10:31:00.000Z",
+            completedAt: null,
+            failedAt: null,
+            createdAt: "2026-08-24T10:30:00.000Z",
+            updatedAt: "2026-08-24T10:32:00.000Z",
+            executionProof: {
+              state: "running",
+              durableRun: {
+                workflowRunId: "run-1",
+                idempotencyKey: "idem-1",
+                persistedAt: "2026-08-24T10:30:00.000Z",
+                queuedAt: "2026-08-24T10:30:00.000Z",
+              },
+              requestDispatch: {
+                dispatched: true,
+                dispatchedAt: "2026-08-24T10:31:00.000Z",
+              },
+              acceptedResponse: {
+                accepted: true,
+                upstreamStatusCode: 202,
+                yoxaExecutionId: "yoxa-run-1",
+              },
+              currentRun: {
+                status: "RUNNING",
+                terminal: false,
+                startedAt: "2026-08-24T10:31:00.000Z",
+                completedAt: null,
+                failedAt: null,
+                updatedAt: "2026-08-24T10:32:00.000Z",
+              },
+            },
+          },
+        ],
+      },
+    } satisfies ApiEnvelope<CaseAggregate>;
+
+    expect(unwrapCaseAggregateEnvelope(validEnvelope)?.workflowRuns[0].executionProof).toMatchObject({
+      state: "running",
+      acceptedResponse: {
+        accepted: true,
+        upstreamStatusCode: 202,
+      },
+    });
+  });
+
   it("rejects malformed dependency nodes and accepts valid dependency node DTOs", () => {
     const aggregate = buildAggregate();
     const malformedDependencyNodeEnvelope = {
@@ -297,7 +455,7 @@ describe("buildCommandCenterViewModel", () => {
           createdAt: "2026-08-24T10:30:00.000Z",
           updatedAt: "2026-08-24T10:32:00.000Z",
           executionProof: {
-            state: "accepted",
+            state: "running",
             durableRun: {
               workflowRunId: "run-1",
               idempotencyKey: "idem-1",

@@ -1,6 +1,7 @@
 import { getStatusPresentation, type StatusPresentation } from "@/lib/workflow/presentation";
 
 import type { ApiEnvelope, CaseAggregate } from "./contracts";
+import type { ExecutionProof } from "@/lib/yoxa/execution-proof";
 
 export type CommandCenterLoadState = "loading" | "ready" | "stale" | "noRecord" | "error";
 
@@ -113,7 +114,48 @@ function isWorkflowRunDto(value: unknown): value is CaseAggregate["workflowRuns"
     isNullableString(value.completedAt) &&
     isNullableString(value.failedAt) &&
     isString(value.createdAt) &&
-    isString(value.updatedAt)
+    isString(value.updatedAt) &&
+    isExecutionProof(value.executionProof)
+  );
+}
+
+function isExecutionProofState(value: unknown): value is ExecutionProof["state"] {
+  return (
+    value === "resume-tracking" ||
+    value === "completed" ||
+    value === "failed" ||
+    value === "queued" ||
+    value === "triggering" ||
+    value === "running" ||
+    value === "waiting-for-human" ||
+    value === "cancelled"
+  );
+}
+
+function isExecutionProof(value: unknown): value is ExecutionProof {
+  return (
+    isRecord(value) &&
+    isExecutionProofState(value.state) &&
+    isRecord(value.durableRun) &&
+    isString(value.durableRun.workflowRunId) &&
+    isString(value.durableRun.idempotencyKey) &&
+    isString(value.durableRun.persistedAt) &&
+    isNullableString(value.durableRun.queuedAt) &&
+    isRecord(value.requestDispatch) &&
+    isBoolean(value.requestDispatch.dispatched) &&
+    isNullableString(value.requestDispatch.dispatchedAt) &&
+    isRecord(value.acceptedResponse) &&
+    isBoolean(value.acceptedResponse.accepted) &&
+    (value.acceptedResponse.upstreamStatusCode === null ||
+      typeof value.acceptedResponse.upstreamStatusCode === "number") &&
+    isNullableString(value.acceptedResponse.yoxaExecutionId) &&
+    isRecord(value.currentRun) &&
+    isString(value.currentRun.status) &&
+    isBoolean(value.currentRun.terminal) &&
+    isNullableString(value.currentRun.startedAt) &&
+    isNullableString(value.currentRun.completedAt) &&
+    isNullableString(value.currentRun.failedAt) &&
+    isString(value.currentRun.updatedAt)
   );
 }
 

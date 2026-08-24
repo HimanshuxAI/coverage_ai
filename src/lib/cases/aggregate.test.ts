@@ -266,7 +266,7 @@ describe("buildCaseAggregate", () => {
             createdAt: "2026-08-24T11:00:00.000Z",
             updatedAt: "2026-08-24T11:02:00.000Z",
             executionProof: {
-              state: "accepted",
+              state: "waiting-for-human",
               acceptedResponse: {
                 upstreamStatusCode: 202,
                 accepted: true,
@@ -301,7 +301,7 @@ describe("buildCaseAggregate", () => {
             createdAt: "2026-08-24T10:30:00.000Z",
             updatedAt: "2026-08-24T10:32:00.000Z",
             executionProof: {
-              state: "accepted",
+              state: "running",
               acceptedResponse: {
                 upstreamStatusCode: 202,
                 accepted: true,
@@ -432,7 +432,7 @@ describe("buildCaseAggregate", () => {
     });
 
     expect(result.data.workflowRuns[0].executionProof).toMatchObject({
-      state: "accepted",
+      state: "running",
       durableRun: {
         workflowRunId: "run-1",
         idempotencyKey: "idem-1",
