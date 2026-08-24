@@ -1,5 +1,17 @@
 import { describe, expect, it } from "vitest";
 
+import type {
+  AuditEvent,
+  CaseRecord,
+  EvidenceReport,
+  ResolutionGraph,
+} from "@/types/workflow";
+
+import type {
+  DecisionPacketRow,
+  HumanDecisionRow,
+  WorkflowRunRow,
+} from "./contracts";
 import { buildCaseAggregate } from "./aggregate";
 
 const caseRow = {
@@ -22,7 +34,7 @@ const caseRow = {
   source_system: "manual-seed",
   created_at: "2026-08-24T09:00:00.000Z",
   updated_at: "2026-08-24T12:00:00.000Z",
-};
+} satisfies CaseRecord;
 
 const waitingApprovalRunRow = {
   id: "run-2",
@@ -44,7 +56,7 @@ const waitingApprovalRunRow = {
   failed_at: null,
   created_at: "2026-08-24T11:00:00.000Z",
   updated_at: "2026-08-24T11:02:00.000Z",
-};
+} satisfies WorkflowRunRow;
 
 const runningWorkflowRunRow = {
   id: "run-1",
@@ -66,7 +78,7 @@ const runningWorkflowRunRow = {
   failed_at: null,
   created_at: "2026-08-24T10:30:00.000Z",
   updated_at: "2026-08-24T10:32:00.000Z",
-};
+} satisfies WorkflowRunRow;
 
 const evidenceReportRow = {
   id: "evidence-1",
@@ -77,12 +89,26 @@ const evidenceReportRow = {
   findings: {
     policy_active: true,
     member_eligible: true,
+    procedure_covered: true,
+    original_policy_inception: "2024-01-01",
+    planned_admission_date: "2026-08-28",
+    waiting_period_months: 12,
+    waiting_period_satisfied: true,
+    continuous_coverage_confirmed: true,
+    applicable_exclusion_found: false,
+    applicable_pre_existing_disease_restriction_found: false,
+    network_hospital_confirmed: true,
+    hospital_id: "HOSP-001",
+    room_eligibility: "Single private room",
+    procedure_sub_limit: 100000,
+    co_payment_rate: 0,
+    deductible_amount: 0,
   },
   citations: ["policy.pdf#page=3"],
   unresolved_dependencies: [],
   tool_status: "SUCCESS",
   completed_at: "2026-08-24T10:45:00.000Z",
-};
+} satisfies EvidenceReport;
 
 const resolutionGraphRow = {
   id: "graph-row-1",
@@ -108,7 +134,7 @@ const resolutionGraphRow = {
   next_safe_action: "Prepare decision packet",
   source_report_versions: { policy: "policy-v1" },
   created_at: "2026-08-24T10:50:00.000Z",
-};
+} satisfies ResolutionGraph;
 
 const latestDecisionRow = {
   id: "decision-row-1",
@@ -128,7 +154,7 @@ const latestDecisionRow = {
   clarification_fields: [],
   decision_timestamp: "2026-08-24T10:55:00.000Z",
   created_at: "2026-08-24T10:55:00.000Z",
-};
+} satisfies HumanDecisionRow;
 
 const latestPacketRow = {
   id: "packet-row-1",
@@ -138,7 +164,7 @@ const latestPacketRow = {
   graph_version: 3,
   generated_at: "2026-08-24T10:53:00.000Z",
   pdf_url: "https://example.com/packet.pdf",
-};
+} satisfies DecisionPacketRow;
 
 const auditEventRow = {
   id: "audit-row-1",
@@ -149,7 +175,7 @@ const auditEventRow = {
   event_data: { workflow_key: "preauth" },
   agent_run_id: null,
   created_at: "2026-08-24T10:31:30.000Z",
-};
+} satisfies AuditEvent;
 
 describe("buildCaseAggregate", () => {
   it("wraps normalized camelCase rows in a success envelope", () => {
@@ -167,68 +193,152 @@ describe("buildCaseAggregate", () => {
       success: true,
       data: {
         case: {
+          id: "case-row-1",
           caseId: "CASE-CT-REAL-001",
           caseVersion: 7,
+          patientConsentStatus: true,
+          patientConsentTimestamp: "2026-08-24T10:00:00.000Z",
+          hospitalClinicalConfirmationStatus: true,
+          hospitalConfirmationTimestamp: "2026-08-24T11:00:00.000Z",
           memberId: "MEM-001",
           policyId: "POL-001",
           hospitalId: "HOSP-001",
+          diagnosis: "Gallstones",
           plannedProcedure: "Laparoscopic cholecystectomy",
           plannedDate: "2026-08-28",
           evidenceReferences: ["evidence://scan-1"],
           documentProvenance: "member-upload",
           currentCaseStatus: "DECISION_READY",
           sourceSystem: "manual-seed",
+          createdAt: "2026-08-24T09:00:00.000Z",
+          updatedAt: "2026-08-24T12:00:00.000Z",
         },
         status: "DECISION_READY",
         workflowRuns: [
           {
+            id: "run-2",
+            caseId: "CASE-CT-REAL-001",
             workflowKey: "appeal",
             workflowName: "Appeal",
             yoxaExecutionId: "yoxa-run-2",
             idempotencyKey: "idem-2",
+            status: "WAITING_FOR_HUMAN",
+            attempt: 1,
+            inputPayload: { workflowKey: "appeal" },
+            rawResponse: { workflow_run_id: "yoxa-run-2" },
+            normalizedOutput: { triggered: true },
+            errorCode: null,
+            errorMessage: null,
             queuedAt: "2026-08-24T11:00:00.000Z",
+            startedAt: "2026-08-24T11:01:00.000Z",
+            completedAt: null,
+            failedAt: null,
+            createdAt: "2026-08-24T11:00:00.000Z",
+            updatedAt: "2026-08-24T11:02:00.000Z",
           },
           {
+            id: "run-1",
+            caseId: "CASE-CT-REAL-001",
             workflowKey: "preauth",
             workflowName: "Pre-auth",
             yoxaExecutionId: "yoxa-run-1",
             idempotencyKey: "idem-1",
+            status: "RUNNING",
+            attempt: 1,
+            inputPayload: { workflowKey: "preauth" },
+            rawResponse: { workflow_run_id: "yoxa-run-1" },
+            normalizedOutput: { triggered: true },
+            errorCode: null,
+            errorMessage: null,
             queuedAt: "2026-08-24T10:30:00.000Z",
+            startedAt: "2026-08-24T10:31:00.000Z",
+            completedAt: null,
+            failedAt: null,
+            createdAt: "2026-08-24T10:30:00.000Z",
+            updatedAt: "2026-08-24T10:32:00.000Z",
           },
         ],
         evidenceReports: [
           {
+            id: "evidence-1",
             caseId: "CASE-CT-REAL-001",
             caseVersion: 7,
             agentName: "policy",
             reportStatus: "COMPLETE",
+            findings: {
+              policy_active: true,
+              member_eligible: true,
+              procedure_covered: true,
+              original_policy_inception: "2024-01-01",
+              planned_admission_date: "2026-08-28",
+              waiting_period_months: 12,
+              waiting_period_satisfied: true,
+              continuous_coverage_confirmed: true,
+              applicable_exclusion_found: false,
+              applicable_pre_existing_disease_restriction_found: false,
+              network_hospital_confirmed: true,
+              hospital_id: "HOSP-001",
+              room_eligibility: "Single private room",
+              procedure_sub_limit: 100000,
+              co_payment_rate: 0,
+              deductible_amount: 0,
+            },
+            citations: ["policy.pdf#page=3"],
             unresolvedDependencies: [],
             toolStatus: "SUCCESS",
+            completedAt: "2026-08-24T10:45:00.000Z",
           },
         ],
         resolutionGraph: {
+          id: "graph-row-1",
           graphId: "graph-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
           graphVersion: 3,
           graphState: "DECISION_READY",
           dependencyNodes: [
             {
               dependencyId: "dep-1",
+              description: "Policy evidence collected",
+              status: "RESOLVED",
+              sources: ["policy"],
+              owner: "policy",
               downstreamImpact: "ready-for-review",
               nextSafeAction: "Proceed to human review",
             },
           ],
+          unresolvedDependencies: [],
+          postAuthorisationConditions: ["Post-op follow-up within 30 days"],
           stateReasonCodes: ["POLICY_CLEAR", "CLINICAL_CLEAR"],
+          nextSafeAction: "Prepare decision packet",
+          sourceReportVersions: { policy: "policy-v1" },
+          createdAt: "2026-08-24T10:50:00.000Z",
         },
         latestDecision: {
+          id: "decision-row-1",
           humanDecisionId: "decision-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          packetId: "packet-1",
           reviewerIdentity: "judge@example.com",
           reviewerRole: "Medical Director",
+          outcome: "AUTHORISE",
           writtenReason: "All required evidence is complete.",
+          conditions: ["Notify hospital desk"],
           authorisedAmount: 85000,
+          currency: "INR",
+          validityConditions: ["Admit within 7 days"],
+          clarificationFields: [],
           decisionTimestamp: "2026-08-24T10:55:00.000Z",
+          createdAt: "2026-08-24T10:55:00.000Z",
         },
         latestPacket: {
+          id: "packet-row-1",
           packetId: "packet-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
           generatedAt: "2026-08-24T10:53:00.000Z",
           pdfUrl: "https://example.com/packet.pdf",
         },
@@ -238,13 +348,21 @@ describe("buildCaseAggregate", () => {
         },
         auditEvents: [
           {
+            id: "audit-row-1",
             auditEventId: "audit-1",
+            caseId: "CASE-CT-REAL-001",
+            caseVersion: 7,
             eventType: "WORKFLOW_TRIGGERED_PREAUTH",
             eventData: { workflow_key: "preauth" },
+            agentRunId: null,
+            createdAt: "2026-08-24T10:31:30.000Z",
           },
         ],
       },
     });
+
+    expect(result.data.workflowRuns[0]).not.toHaveProperty("created_at");
+    expect(result.data.auditEvents[0]).not.toHaveProperty("created_at");
   });
 
   it("preserves successful empty reads as empty arrays or nulls", () => {
