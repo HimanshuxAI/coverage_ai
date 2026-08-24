@@ -1,8 +1,9 @@
 "use client";
 
-import { use, useEffect, useState } from "react";
+import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
+import { createActiveRefreshController } from "@/lib/cases/active-refresh";
 import type { CaseAggregate } from "@/lib/cases/contracts";
 import {
   buildCommandCenterViewModel,
@@ -168,8 +169,14 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Unexpected error";
 }
 
-async function fetchCaseAggregate(caseId: string): Promise<CaseAggregate> {
-  const response = await fetch(`/api/cases/${caseId}`);
+function toCaseRequestError(error: unknown): CaseRequestError {
+  return error instanceof CaseRequestError
+    ? error
+    : new CaseRequestError("error", getErrorMessage(error));
+}
+
+async function fetchCaseAggregate(caseId: string, signal?: AbortSignal): Promise<CaseAggregate> {
+  const response = await fetch(`/api/cases/${caseId}`, { signal });
   const payload = (await response.json().catch(() => null)) as unknown;
 
   if (response.status === 404) {
@@ -200,100 +207,128 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
+  const [liveUpdateInterrupted, setLiveUpdateInterrupted] = useState(false);
+  const caseDataRef = useRef<CaseAggregate | null>(null);
+  const refreshControllerRef = useRef<ReturnType<typeof createActiveRefreshController<CaseAggregate>> | null>(
+    null
+  );
+
+  function applyCaseAggregate(nextCaseData: CaseAggregate) {
+    const nextSnapshot = resolveCaseAggregateSnapshot({
+      currentData: caseDataRef.current,
+      nextData: nextCaseData,
+    });
+    caseDataRef.current = nextSnapshot.caseData;
+    setCaseData(nextSnapshot.caseData);
+    setSelectedWorkflowRunId((current) =>
+      current && nextSnapshot.caseData
+        ? nextSnapshot.caseData.workflowRuns.some((workflowRun) => workflowRun.id === current)
+          ? current
+          : null
+        : null
+    );
+    setLoadState(nextSnapshot.loadState);
+    setError(nextSnapshot.error);
+    setLiveUpdateInterrupted(false);
+  }
+
+  function applyCaseRequestError(
+    requestError: CaseRequestError,
+    options?: {
+      surfaceError?: boolean;
+    }
+  ) {
+    const nextSnapshot = resolveCaseAggregateSnapshot({
+      currentData: caseDataRef.current,
+      requestError: {
+        kind: requestError.kind,
+        message: requestError.message,
+      },
+    });
+    caseDataRef.current = nextSnapshot.caseData;
+    setCaseData(nextSnapshot.caseData);
+    if (nextSnapshot.caseData === null) {
+      setSelectedWorkflowRunId(null);
+    }
+    setLoadState(nextSnapshot.loadState);
+    setError(options?.surfaceError === false ? null : nextSnapshot.error);
+  }
 
   async function refreshCaseDetails(options?: { showLoading?: boolean }) {
-    const shouldShowLoading = options?.showLoading ?? caseData === null;
+    const shouldShowLoading = options?.showLoading ?? caseDataRef.current === null;
     if (shouldShowLoading) {
       setLoadState("loading");
     }
 
     setError(null);
+    setLiveUpdateInterrupted(false);
 
     try {
       const nextCaseData = await fetchCaseAggregate(caseId);
-      const nextSnapshot = resolveCaseAggregateSnapshot({
-        currentData: caseData,
-        nextData: nextCaseData,
-      });
-      setCaseData(nextSnapshot.caseData);
-      setSelectedWorkflowRunId((current) =>
-        current && nextSnapshot.caseData
-          ? nextSnapshot.caseData.workflowRuns.some((workflowRun) => workflowRun.id === current)
-            ? current
-            : null
-          : null
-      );
-      setLoadState(nextSnapshot.loadState);
+      applyCaseAggregate(nextCaseData);
     } catch (requestError: unknown) {
-      const errorState =
-        requestError instanceof CaseRequestError
-          ? requestError
-          : new CaseRequestError("error", getErrorMessage(requestError));
-      const nextSnapshot = resolveCaseAggregateSnapshot({
-        currentData: caseData,
-        requestError: {
-          kind: errorState.kind,
-          message: errorState.message,
-        },
-      });
-      setCaseData(nextSnapshot.caseData);
-      if (nextSnapshot.caseData === null) {
-        setSelectedWorkflowRunId(null);
-      }
-      setLoadState(nextSnapshot.loadState);
-      setError(nextSnapshot.error);
+      applyCaseRequestError(toCaseRequestError(requestError));
     }
   }
 
   useEffect(() => {
-    let active = true;
+    const controller = new AbortController();
 
     async function loadCaseDetails() {
+      caseDataRef.current = null;
       setLoadState("loading");
       setError(null);
+      setLiveUpdateInterrupted(false);
 
       try {
-        const nextCaseData = await fetchCaseAggregate(caseId);
-        if (!active) {
+        const nextCaseData = await fetchCaseAggregate(caseId, controller.signal);
+        if (controller.signal.aborted) {
           return;
         }
 
-        const nextSnapshot = resolveCaseAggregateSnapshot({
-          currentData: null,
-          nextData: nextCaseData,
-        });
-        setCaseData(nextSnapshot.caseData);
-        setSelectedWorkflowRunId(null);
-        setLoadState(nextSnapshot.loadState);
+        applyCaseAggregate(nextCaseData);
       } catch (requestError: unknown) {
-        if (!active) {
+        if (controller.signal.aborted) {
           return;
         }
 
-        const errorState =
-          requestError instanceof CaseRequestError
-            ? requestError
-            : new CaseRequestError("error", getErrorMessage(requestError));
-        const nextSnapshot = resolveCaseAggregateSnapshot({
-          currentData: null,
-          requestError: {
-            kind: errorState.kind,
-            message: errorState.message,
-          },
-        });
-        setCaseData(nextSnapshot.caseData);
-        setSelectedWorkflowRunId(null);
-        setError(nextSnapshot.error);
-        setLoadState(nextSnapshot.loadState);
+        applyCaseRequestError(toCaseRequestError(requestError));
       }
     }
 
     void loadCaseDetails();
 
     return () => {
-      active = false;
+      controller.abort();
     };
   }, [caseId]);
+
+  useEffect(() => {
+    const controller = createActiveRefreshController<CaseAggregate>(
+      (signal) => fetchCaseAggregate(caseId, signal),
+      {
+        onSnapshot: (nextCaseData) => {
+          applyCaseAggregate(nextCaseData);
+        },
+        onInterrupted: (requestError) => {
+          setLiveUpdateInterrupted(true);
+          applyCaseRequestError(toCaseRequestError(requestError), { surfaceError: false });
+        },
+      }
+    );
+
+    refreshControllerRef.current = controller;
+    controller.start(null);
+
+    return () => {
+      controller.stop();
+      refreshControllerRef.current = null;
+    };
+  }, [caseId]);
+
+  useEffect(() => {
+    refreshControllerRef.current?.update(caseData);
+  }, [caseData]);
 
   const viewModel = caseData ? buildCommandCenterViewModel(caseData) : null;
   const statusBadge = getStatusBadge(loadState, caseData);
@@ -793,6 +828,24 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           >
             Yoxa Deployed Workflows Execution Trail
           </h3>
+
+          {liveUpdateInterrupted && (
+            <div
+              style={{
+                marginBottom: 16,
+                padding: "10px 14px",
+                border: "1px solid #D99A2B",
+                background: "#FFF7E8",
+                color: "#7A5613",
+                fontSize: "11px",
+                fontWeight: 800,
+                letterSpacing: "0.14em",
+                textTransform: "uppercase",
+              }}
+            >
+              LIVE UPDATE INTERRUPTED
+            </div>
+          )}
 
           {viewModel && viewModel.workflow.runs.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>
