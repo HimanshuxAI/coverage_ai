@@ -31,7 +31,7 @@ Complete.
 
 ## Commit
 
-- Pending local commit at report-write time. Fill in after commit.
+- `f1532822` — `Make the dashboard console honest and data-backed`
 
 ## Concerns
 
