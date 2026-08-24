@@ -4,6 +4,9 @@ import type { ApiEnvelope, CaseAggregate } from "./contracts";
 import {
   buildCommandCenterViewModel,
   formatCalendarDate,
+  getCommandCenterCopyButtonLabel,
+  getCommandCenterInspectorSelection,
+  getCommandCenterManualRefreshAction,
   getCommandCenterStatusPresentation,
   getCommandCenterPacketAction,
   getCommandCenterSafeCopyFields,
@@ -951,7 +954,7 @@ describe("getCommandCenterPacketAction", () => {
     });
   });
 
-  it("returns a print action when a persisted packet exists without a pdf URL", () => {
+  it("returns no packet action when a persisted packet exists without a pdf URL", () => {
     const aggregate = buildAggregate({
       latestPacket: {
         id: "packet-row-1",
@@ -964,10 +967,7 @@ describe("getCommandCenterPacketAction", () => {
       },
     });
 
-    expect(getCommandCenterPacketAction(aggregate.latestPacket)).toEqual({
-      kind: "print",
-      label: "PRINT OR SAVE PDF",
-    });
+    expect(getCommandCenterPacketAction(aggregate.latestPacket)).toBeNull();
   });
 
   it("returns no packet action when no persisted packet record exists", () => {
@@ -1007,6 +1007,111 @@ describe("getCommandCenterSafeCopyFields", () => {
       { key: "localRunId", label: "Local run ID", value: "run-1" },
       { key: "idempotencyKey", label: "Idempotency key", value: "idem-1" },
     ]);
+  });
+});
+
+describe("getCommandCenterManualRefreshAction", () => {
+  it("reports a busy aggregate-read refresh while a manual refresh is running", () => {
+    expect(
+      getCommandCenterManualRefreshAction({
+        manualRefreshing: true,
+        aggregateError: null,
+        liveUpdateInterrupted: false,
+      })
+    ).toEqual({
+      intent: "aggregate-read",
+      label: "REFRESHING AGGREGATE...",
+    });
+  });
+
+  it("uses retry copy only for aggregate failures or interrupted live updates", () => {
+    expect(
+      getCommandCenterManualRefreshAction({
+        manualRefreshing: false,
+        aggregateError: "Aggregate refresh failed.",
+        liveUpdateInterrupted: false,
+      })
+    ).toEqual({
+      intent: "aggregate-read",
+      label: "RETRY AGGREGATE FETCH",
+    });
+
+    expect(
+      getCommandCenterManualRefreshAction({
+        manualRefreshing: false,
+        aggregateError: null,
+        liveUpdateInterrupted: true,
+      })
+    ).toEqual({
+      intent: "aggregate-read",
+      label: "RETRY AGGREGATE FETCH",
+    });
+  });
+
+  it("keeps the normal refresh label when unrelated UI errors exist", () => {
+    expect(
+      getCommandCenterManualRefreshAction({
+        manualRefreshing: false,
+        aggregateError: null,
+        liveUpdateInterrupted: false,
+      })
+    ).toEqual({
+      intent: "aggregate-read",
+      label: "REFRESH AGGREGATE",
+    });
+  });
+});
+
+describe("getCommandCenterCopyButtonLabel", () => {
+  it("returns copied feedback only for the active copied field", () => {
+    expect(getCommandCenterCopyButtonLabel("caseId", "caseId")).toBe("COPIED");
+    expect(getCommandCenterCopyButtonLabel("caseId", "memberId")).toBe("COPY");
+    expect(getCommandCenterCopyButtonLabel("caseId", null)).toBe("COPY");
+  });
+});
+
+describe("getCommandCenterInspectorSelection", () => {
+  it("opens a selected run and preserves it when still available", () => {
+    expect(
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: null,
+        nextSelectedRunId: "run-1",
+        availableRunIds: ["run-1", "run-2"],
+      })
+    ).toBe("run-1");
+
+    expect(
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: "run-1",
+        availableRunIds: ["run-1", "run-2"],
+      })
+    ).toBe("run-1");
+  });
+
+  it("closes the inspector when explicitly closed, escaped, or the run disappears", () => {
+    expect(
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: "run-1",
+        closeInspector: true,
+        availableRunIds: ["run-1"],
+      })
+    ).toBeNull();
+
+    expect(
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: "run-1",
+        closeInspector: true,
+        closeReason: "escape",
+        availableRunIds: ["run-1"],
+      })
+    ).toBeNull();
+
+    expect(
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: "run-1",
+        availableRunIds: ["run-2"],
+      })
+    ).toBeNull();
   });
 });
 

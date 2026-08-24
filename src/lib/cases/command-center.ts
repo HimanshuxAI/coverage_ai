@@ -75,11 +75,12 @@ export type CommandCenterPacketAction =
       kind: "open";
       href: string;
       label: "OPEN PACKET PDF";
-    }
-  | {
-      kind: "print";
-      label: "PRINT OR SAVE PDF";
     };
+
+export interface CommandCenterManualRefreshAction {
+  intent: "aggregate-read";
+  label: "REFRESH AGGREGATE" | "RETRY AGGREGATE FETCH" | "REFRESHING AGGREGATE...";
+}
 
 export interface CommandCenterWorkflowRunInspector {
   workflowName: string;
@@ -553,21 +554,14 @@ function appendSafeCopyField(
 export function getCommandCenterPacketAction(
   packetRecord: CaseAggregate["latestPacket"]
 ): CommandCenterPacketAction | null {
-  if (!packetRecord) {
+  if (!packetRecord || !packetRecord.pdfUrl) {
     return null;
   }
 
-  if (packetRecord.pdfUrl) {
-    return {
-      kind: "open",
-      href: packetRecord.pdfUrl,
-      label: "OPEN PACKET PDF",
-    };
-  }
-
   return {
-    kind: "print",
-    label: "PRINT OR SAVE PDF",
+    kind: "open",
+    href: packetRecord.pdfUrl,
+    label: "OPEN PACKET PDF",
   };
 }
 
@@ -603,6 +597,60 @@ export function getCommandCenterSafeCopyFields(
   });
 
   return fields;
+}
+
+export function getCommandCenterManualRefreshAction(input: {
+  manualRefreshing: boolean;
+  aggregateError: string | null;
+  liveUpdateInterrupted: boolean;
+}): CommandCenterManualRefreshAction {
+  if (input.manualRefreshing) {
+    return {
+      intent: "aggregate-read",
+      label: "REFRESHING AGGREGATE...",
+    };
+  }
+
+  if (input.aggregateError || input.liveUpdateInterrupted) {
+    return {
+      intent: "aggregate-read",
+      label: "RETRY AGGREGATE FETCH",
+    };
+  }
+
+  return {
+    intent: "aggregate-read",
+    label: "REFRESH AGGREGATE",
+  };
+}
+
+export function getCommandCenterCopyButtonLabel(
+  fieldKey: CommandCenterCopyField["key"],
+  copiedFieldKey: CommandCenterCopyField["key"] | null
+): "COPY" | "COPIED" {
+  return copiedFieldKey === fieldKey ? "COPIED" : "COPY";
+}
+
+export function getCommandCenterInspectorSelection(input: {
+  currentSelectedRunId: string | null;
+  nextSelectedRunId?: string | null;
+  closeInspector?: boolean;
+  closeReason?: "button" | "escape";
+  availableRunIds: string[];
+}): string | null {
+  if (input.closeInspector) {
+    return null;
+  }
+
+  if (input.nextSelectedRunId !== undefined) {
+    return input.nextSelectedRunId && input.availableRunIds.includes(input.nextSelectedRunId)
+      ? input.nextSelectedRunId
+      : null;
+  }
+
+  return input.currentSelectedRunId && input.availableRunIds.includes(input.currentSelectedRunId)
+    ? input.currentSelectedRunId
+    : null;
 }
 
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {

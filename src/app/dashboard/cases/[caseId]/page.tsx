@@ -10,6 +10,9 @@ import {
   type CommandCenterCopyField,
   type CommandCenterLoadState,
   formatCalendarDate,
+  getCommandCenterCopyButtonLabel,
+  getCommandCenterInspectorSelection,
+  getCommandCenterManualRefreshAction,
   getCommandCenterStatusPresentation,
   getCommandCenterPacketAction,
   getCommandCenterSafeCopyFields,
@@ -208,6 +211,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const [caseData, setCaseData] = useState<CaseAggregate | null>(null);
   const [loadState, setLoadState] = useState<CommandCenterLoadState>("loading");
   const [error, setError] = useState<string | null>(null);
+  const [aggregateError, setAggregateError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
@@ -227,13 +231,13 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     caseDataRef.current = nextSnapshot.caseData;
     setCaseData(nextSnapshot.caseData);
     setSelectedWorkflowRunId((current) =>
-      current && nextSnapshot.caseData
-        ? nextSnapshot.caseData.workflowRuns.some((workflowRun) => workflowRun.id === current)
-          ? current
-          : null
-        : null
+      getCommandCenterInspectorSelection({
+        currentSelectedRunId: current,
+        availableRunIds: nextSnapshot.caseData?.workflowRuns.map((workflowRun) => workflowRun.id) ?? [],
+      })
     );
     setLoadState(nextSnapshot.loadState);
+    setAggregateError(nextSnapshot.error);
     setError(nextSnapshot.error);
     setLiveUpdateInterrupted(false);
   }
@@ -253,8 +257,15 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     });
     caseDataRef.current = nextSnapshot.caseData;
     setCaseData(nextSnapshot.caseData);
+    setAggregateError(nextSnapshot.error);
     if (nextSnapshot.caseData === null) {
-      setSelectedWorkflowRunId(null);
+      setSelectedWorkflowRunId((current) =>
+        getCommandCenterInspectorSelection({
+          currentSelectedRunId: current,
+          closeInspector: true,
+          availableRunIds: [],
+        })
+      );
     }
     setLoadState(nextSnapshot.loadState);
     setError(options?.surfaceError === false ? null : nextSnapshot.error);
@@ -283,6 +294,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     async function loadCaseDetails() {
       caseDataRef.current = null;
       setLoadState("loading");
+      setAggregateError(null);
       setError(null);
       setLiveUpdateInterrupted(false);
 
@@ -343,7 +355,14 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setSelectedWorkflowRunId(null);
+        setSelectedWorkflowRunId((current) =>
+          getCommandCenterInspectorSelection({
+            currentSelectedRunId: current,
+            closeInspector: true,
+            closeReason: "escape",
+            availableRunIds: caseData?.workflowRuns.map((workflowRun) => workflowRun.id) ?? [],
+          })
+        );
       }
     }
 
@@ -351,7 +370,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedWorkflowRunId]);
+  }, [caseData, selectedWorkflowRunId]);
 
   useEffect(() => {
     return () => {
@@ -377,6 +396,12 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     : [{ key: "caseId", label: "Case ID", value: caseId } satisfies CommandCenterCopyField];
   const safeCopyFieldByKey = new Map(safeCopyFields.map((field) => [field.key, field] as const));
   const packetAction = viewModel ? getCommandCenterPacketAction(viewModel.packet.record) : null;
+  const workflowRunIds = viewModel?.workflow.runs.map((run) => run.id) ?? [];
+  const refreshAction = getCommandCenterManualRefreshAction({
+    manualRefreshing,
+    aggregateError,
+    liveUpdateInterrupted,
+  });
 
   function resetCopyFeedback(fieldKey: CommandCenterCopyField["key"]) {
     if (copyFeedbackTimeoutRef.current !== null) {
@@ -461,13 +486,6 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           viewModel.decision.record.authorisedAmount,
           viewModel.decision.record.currency
         );
-  const refreshLabel =
-    manualRefreshing
-      ? "REFRESHING AGGREGATE..."
-      : error || liveUpdateInterrupted
-        ? "RETRY AGGREGATE FETCH"
-        : "REFRESH AGGREGATE";
-
   function renderCopyButton(fieldKey: CommandCenterCopyField["key"]) {
     const field = safeCopyFieldByKey.get(fieldKey);
 
@@ -493,7 +511,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
         }}
         aria-label={`Copy ${field.label}`}
       >
-        {copiedFieldKey === field.key ? "COPIED" : "COPY"}
+        {getCommandCenterCopyButtonLabel(field.key, copiedFieldKey)}
       </button>
     );
   }
@@ -613,7 +631,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   opacity: manualRefreshing ? 0.7 : 1,
                 }}
               >
-                {refreshLabel}
+                {refreshAction.label}
               </button>
 
               {showProcessAction && statusPresentation !== null && (
@@ -997,7 +1015,15 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 <button
                   key={workflowRun.id}
                   type="button"
-                  onClick={() => setSelectedWorkflowRunId(workflowRun.id)}
+                  onClick={() =>
+                    setSelectedWorkflowRunId((current) =>
+                      getCommandCenterInspectorSelection({
+                        currentSelectedRunId: current,
+                        nextSelectedRunId: workflowRun.id,
+                        availableRunIds: workflowRunIds,
+                      })
+                    )
+                  }
                   aria-pressed={selectedWorkflowRunId === workflowRun.id}
                   aria-controls={selectedWorkflowRunId === workflowRun.id ? "workflow-run-inspector" : undefined}
                   style={{
@@ -1080,7 +1106,16 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 </span>
                 <button
                   type="button"
-                  onClick={() => setSelectedWorkflowRunId(null)}
+                  onClick={() =>
+                    setSelectedWorkflowRunId((current) =>
+                      getCommandCenterInspectorSelection({
+                        currentSelectedRunId: current,
+                        closeInspector: true,
+                        closeReason: "button",
+                        availableRunIds: workflowRunIds,
+                      })
+                    )
+                  }
                   aria-label="Close workflow run inspector"
                   style={{
                     background: "none",
@@ -1205,42 +1240,23 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 : summaryStateMessage ?? "No durable decision packet has been recorded for this case."}
             </p>
             {packetAction ? (
-              packetAction.kind === "open" ? (
-                <a
-                  href={packetAction.href}
-                  target="_blank"
-                  rel="noreferrer"
-                  style={{
-                    display: "inline-block",
-                    background: "var(--bg)",
-                    border: "1px solid var(--forest)",
-                    padding: "6px 12px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "var(--forest)",
-                    textDecoration: "none",
-                  }}
-                >
-                  {packetAction.label}
-                </a>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => window.print()}
-                  style={{
-                    display: "inline-block",
-                    background: "var(--bg)",
-                    border: "1px solid var(--forest)",
-                    padding: "6px 12px",
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    color: "var(--forest)",
-                    cursor: "pointer",
-                  }}
-                >
-                  {packetAction.label}
-                </button>
-              )
+              <a
+                href={packetAction.href}
+                target="_blank"
+                rel="noreferrer"
+                style={{
+                  display: "inline-block",
+                  background: "var(--bg)",
+                  border: "1px solid var(--forest)",
+                  padding: "6px 12px",
+                  fontSize: "11px",
+                  fontWeight: 700,
+                  color: "var(--forest)",
+                  textDecoration: "none",
+                }}
+              >
+                {packetAction.label}
+              </a>
             ) : (
               <div
                 style={{
@@ -1253,7 +1269,9 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   color: "var(--forest)",
                 }}
               >
-                {summaryStateMessage ?? "NO PACKET RECORD"}
+                {viewModel?.packet.record
+                  ? "PACKET RECORDED WITHOUT PDF"
+                  : summaryStateMessage ?? "NO PACKET RECORD"}
               </div>
             )}
           </div>
