@@ -50,8 +50,8 @@ export interface HumanDecisionRow {
   outcome: string;
   written_reason: string;
   conditions: string[];
-  authorised_amount: number;
-  currency: string;
+  authorised_amount: number | null;
+  currency: string | null;
   validity_conditions: string[];
   clarification_fields: string[];
   decision_timestamp: string;
@@ -65,7 +65,7 @@ export interface DecisionPacketRow {
   case_version: number;
   graph_version: number;
   generated_at: string;
-  pdf_url: string;
+  pdf_url: string | null;
 }
 
 export interface CaseDto {
@@ -163,8 +163,8 @@ export interface HumanDecisionDto {
   outcome: string;
   writtenReason: string;
   conditions: string[];
-  authorisedAmount: number;
-  currency: string;
+  authorisedAmount: number | null;
+  currency: string | null;
   validityConditions: string[];
   clarificationFields: string[];
   decisionTimestamp: string;
@@ -178,7 +178,7 @@ export interface DecisionPacketDto {
   caseVersion: number;
   graphVersion: number;
   generatedAt: string;
-  pdfUrl: string;
+  pdfUrl: string | null;
 }
 
 export interface AuditEventDto {

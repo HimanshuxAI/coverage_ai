@@ -7,6 +7,31 @@ import { NextRequest, NextResponse } from "next/server";
 import { AggregateReadError, buildCaseAggregate } from "@/lib/cases/aggregate";
 import { createClient } from "@/utils/supabase/server";
 
+function normalizeReadError(error: unknown) {
+  if (!error || typeof error !== "object") {
+    return {
+      code: "UNKNOWN_CASE_READ_ERROR",
+      message: "Unknown case read failure",
+      details: null,
+      hint: null,
+    };
+  }
+
+  const readError = error as {
+    code?: unknown;
+    message?: unknown;
+    details?: unknown;
+    hint?: unknown;
+  };
+
+  return {
+    code: typeof readError.code === "string" ? readError.code : "UNKNOWN_CASE_READ_ERROR",
+    message: typeof readError.message === "string" ? readError.message : "Unknown case read failure",
+    details: typeof readError.details === "string" ? readError.details : readError.details ?? null,
+    hint: typeof readError.hint === "string" ? readError.hint : readError.hint ?? null,
+  };
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ caseId: string }> }
@@ -27,9 +52,24 @@ export async function GET(
       .from("cases")
       .select("*")
       .eq("case_id", caseId)
-      .single();
+      .maybeSingle();
 
-    if (caseError || !caseRecord) {
+    if (caseError) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: {
+            code: "CASE_READ_FAILED",
+            message: `Failed to read case ${caseId}`,
+            source: "caseRecord",
+            readError: normalizeReadError(caseError),
+          },
+        },
+        { status: 502 }
+      );
+    }
+
+    if (!caseRecord) {
       return NextResponse.json(
         { success: false, error: { code: "CASE_NOT_FOUND", message: `Case ${caseId} not found` } },
         { status: 404 }

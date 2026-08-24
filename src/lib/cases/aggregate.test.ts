@@ -166,6 +166,18 @@ const latestPacketRow = {
   pdf_url: "https://example.com/packet.pdf",
 } satisfies DecisionPacketRow;
 
+const nullableDecisionRow = {
+  ...latestDecisionRow,
+  outcome: "REQUEST_CLARIFICATION",
+  authorised_amount: null,
+  currency: null,
+} satisfies HumanDecisionRow;
+
+const nullablePacketRow = {
+  ...latestPacketRow,
+  pdf_url: null,
+} satisfies DecisionPacketRow;
+
 const auditEventRow = {
   id: "audit-row-1",
   audit_event_id: "audit-1",
@@ -387,6 +399,29 @@ describe("buildCaseAggregate", () => {
         pendingApproval: null,
         auditEvents: [],
       },
+    });
+  });
+
+  it("preserves nullable human decision and packet fields from successful reads", () => {
+    const result = buildCaseAggregate({
+      caseRecord: caseRow,
+      workflowRuns: { data: [], error: null },
+      evidenceReports: { data: [], error: null },
+      resolutionGraphs: { data: [], error: null },
+      humanDecisions: { data: [nullableDecisionRow], error: null },
+      decisionPackets: { data: [nullablePacketRow], error: null },
+      auditEvents: { data: [], error: null },
+    });
+
+    expect(result.data.latestDecision).toMatchObject({
+      humanDecisionId: "decision-1",
+      outcome: "REQUEST_CLARIFICATION",
+      authorisedAmount: null,
+      currency: null,
+    });
+    expect(result.data.latestPacket).toMatchObject({
+      packetId: "packet-1",
+      pdfUrl: null,
     });
   });
 
