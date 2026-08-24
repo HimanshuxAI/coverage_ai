@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import type { ApiEnvelope, CaseAggregate } from "./contracts";
 import {
   buildCommandCenterViewModel,
+  formatCalendarDate,
+  resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "./command-center";
 
@@ -51,6 +53,82 @@ describe("unwrapCaseAggregateEnvelope", () => {
 
     expect(unwrapCaseAggregateEnvelope(envelope)).toBe(aggregate);
     expect(unwrapCaseAggregateEnvelope(aggregate)).toBeNull();
+  });
+
+  it("rejects malformed aggregates even when top-level arrays exist", () => {
+    const aggregate = buildAggregate();
+    const malformedWorkflowEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [{ id: "run-1" }],
+      },
+    };
+    const malformedEvidenceEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        evidenceReports: [{ id: "report-1", agentName: "policy" }],
+      },
+    };
+    const malformedAuditEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        auditEvents: [{ id: "audit-1", eventType: "ANY_EVENT" }],
+      },
+    };
+
+    expect(unwrapCaseAggregateEnvelope(malformedWorkflowEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(malformedEvidenceEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(malformedAuditEnvelope)).toBeNull();
+  });
+});
+
+describe("resolveCaseAggregateSnapshot", () => {
+  it("keeps the last good aggregate but marks it stale when a refresh fails", () => {
+    const aggregate = buildAggregate();
+
+    expect(
+      resolveCaseAggregateSnapshot({
+        currentData: aggregate,
+        requestError: { kind: "error", message: "Aggregate refresh failed." },
+      })
+    ).toEqual({
+      caseData: aggregate,
+      loadState: "stale",
+      error: "Aggregate refresh failed.",
+    });
+  });
+
+  it("keeps initial failures without data as unavailable or no-record states", () => {
+    expect(
+      resolveCaseAggregateSnapshot({
+        currentData: null,
+        requestError: { kind: "error", message: "Aggregate refresh failed." },
+      })
+    ).toEqual({
+      caseData: null,
+      loadState: "error",
+      error: "Aggregate refresh failed.",
+    });
+
+    expect(
+      resolveCaseAggregateSnapshot({
+        currentData: null,
+        requestError: { kind: "noRecord", message: "Case not found." },
+      })
+    ).toEqual({
+      caseData: null,
+      loadState: "noRecord",
+      error: "Case not found.",
+    });
+  });
+});
+
+describe("formatCalendarDate", () => {
+  it("formats YYYY-MM-DD values without timezone shifts", () => {
+    expect(formatCalendarDate("2026-08-28")).toBe("28 Aug 2026");
   });
 });
 

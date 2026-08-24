@@ -6,26 +6,23 @@ import Link from "next/link";
 import type { CaseAggregate, WorkflowRunDto } from "@/lib/cases/contracts";
 import {
   buildCommandCenterViewModel,
+  type CommandCenterLoadState,
+  formatCalendarDate,
+  resolveCaseAggregateSnapshot,
   unwrapCaseAggregateEnvelope,
 } from "@/lib/cases/command-center";
 import { getStatusPresentation } from "@/lib/workflow/presentation";
 import { buildProcessRequestBody, canRenderProcessAction } from "@/lib/yoxa/process-request";
 import styles from "@/components/landing/landing.module.css";
 
-type CaseLoadState = "loading" | "ready" | "noRecord" | "error";
-
 const dateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
   dateStyle: "medium",
   timeStyle: "short",
 });
 
-const dateFormatter = new Intl.DateTimeFormat("en-IN", {
-  dateStyle: "medium",
-});
-
 class CaseRequestError extends Error {
   constructor(
-    readonly kind: Exclude<CaseLoadState, "loading" | "ready">,
+    readonly kind: Extract<CommandCenterLoadState, "noRecord" | "error">,
     message: string
   ) {
     super(message);
@@ -40,15 +37,6 @@ function formatDateTime(value: string | null): string {
 
   const parsed = new Date(value);
   return Number.isNaN(parsed.getTime()) ? value : dateTimeFormatter.format(parsed);
-}
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return "NOT RECORDED";
-  }
-
-  const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? value : dateFormatter.format(parsed);
 }
 
 function formatStatusLabel(value: string): string {
@@ -106,7 +94,15 @@ function getWorkflowStatusColor(status: string): string {
   return "var(--muted)";
 }
 
-function getStatusBadge(loadState: CaseLoadState, caseData: CaseAggregate | null) {
+function getStatusBadge(loadState: CommandCenterLoadState, caseData: CaseAggregate | null) {
+  if (loadState === "stale") {
+    return {
+      label: "STALE SNAPSHOT",
+      badgeBg: "#D99A2B",
+      badgeText: "#07130C",
+    };
+  }
+
   if (caseData) {
     const presentation = getStatusPresentation(caseData.status);
     return {
@@ -139,10 +135,12 @@ function getStatusBadge(loadState: CaseLoadState, caseData: CaseAggregate | null
   };
 }
 
-function getStateMessage(loadState: Exclude<CaseLoadState, "ready">): string {
+function getStateMessage(loadState: Exclude<CommandCenterLoadState, "ready">): string {
   switch (loadState) {
     case "loading":
       return "Loading live case aggregate…";
+    case "stale":
+      return "Displaying the last successful snapshot because the latest refresh failed.";
     case "noRecord":
       return "No case aggregate exists for this case ID.";
     case "error":
@@ -198,7 +196,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const caseId = resolvedParams.caseId;
 
   const [caseData, setCaseData] = useState<CaseAggregate | null>(null);
-  const [loadState, setLoadState] = useState<CaseLoadState>("loading");
+  const [loadState, setLoadState] = useState<CommandCenterLoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
   const [selectedWorkflowRun, setSelectedWorkflowRun] = useState<WorkflowRunDto | null>(null);
@@ -213,29 +211,35 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
     try {
       const nextCaseData = await fetchCaseAggregate(caseId);
-      setCaseData(nextCaseData);
+      const nextSnapshot = resolveCaseAggregateSnapshot({
+        currentData: caseData,
+        nextData: nextCaseData,
+      });
+      setCaseData(nextSnapshot.caseData);
       setSelectedWorkflowRun((current) =>
-        current ? nextCaseData.workflowRuns.find((workflowRun) => workflowRun.id === current.id) ?? null : null
+        current && nextSnapshot.caseData
+          ? nextSnapshot.caseData.workflowRuns.find((workflowRun) => workflowRun.id === current.id) ?? null
+          : null
       );
-      setLoadState("ready");
+      setLoadState(nextSnapshot.loadState);
     } catch (requestError: unknown) {
-      if (requestError instanceof CaseRequestError) {
-        setError(requestError.message);
-        if (requestError.kind === "noRecord") {
-          setCaseData(null);
-          setSelectedWorkflowRun(null);
-          setLoadState("noRecord");
-          return;
-        }
-      } else {
-        setError(getErrorMessage(requestError));
-      }
-
-      if (caseData === null) {
-        setCaseData(null);
+      const errorState =
+        requestError instanceof CaseRequestError
+          ? requestError
+          : new CaseRequestError("error", getErrorMessage(requestError));
+      const nextSnapshot = resolveCaseAggregateSnapshot({
+        currentData: caseData,
+        requestError: {
+          kind: errorState.kind,
+          message: errorState.message,
+        },
+      });
+      setCaseData(nextSnapshot.caseData);
+      if (nextSnapshot.caseData === null) {
         setSelectedWorkflowRun(null);
-        setLoadState("error");
       }
+      setLoadState(nextSnapshot.loadState);
+      setError(nextSnapshot.error);
     }
   }
 
@@ -252,25 +256,33 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           return;
         }
 
-        setCaseData(nextCaseData);
+        const nextSnapshot = resolveCaseAggregateSnapshot({
+          currentData: null,
+          nextData: nextCaseData,
+        });
+        setCaseData(nextSnapshot.caseData);
         setSelectedWorkflowRun(null);
-        setLoadState("ready");
+        setLoadState(nextSnapshot.loadState);
       } catch (requestError: unknown) {
         if (!active) {
           return;
         }
 
-        setCaseData(null);
+        const errorState =
+          requestError instanceof CaseRequestError
+            ? requestError
+            : new CaseRequestError("error", getErrorMessage(requestError));
+        const nextSnapshot = resolveCaseAggregateSnapshot({
+          currentData: null,
+          requestError: {
+            kind: errorState.kind,
+            message: errorState.message,
+          },
+        });
+        setCaseData(nextSnapshot.caseData);
         setSelectedWorkflowRun(null);
-
-        if (requestError instanceof CaseRequestError) {
-          setError(requestError.message);
-          setLoadState(requestError.kind);
-          return;
-        }
-
-        setError(getErrorMessage(requestError));
-        setLoadState("error");
+        setError(nextSnapshot.error);
+        setLoadState(nextSnapshot.loadState);
       }
     }
 
@@ -317,11 +329,12 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     }
   }
 
+  const snapshotAvailable = loadState === "ready" || loadState === "stale";
   const summaryStateMessage = loadState === "ready" ? null : getStateMessage(loadState);
-  const requestedAmountText = loadState === "ready" ? "NO RECORD" : "UNAVAILABLE";
+  const requestedAmountText = snapshotAvailable ? "NO RECORD" : "UNAVAILABLE";
   const decisionAmountText =
     viewModel?.decision.record?.authorisedAmount === null || viewModel?.decision.record?.authorisedAmount === undefined
-      ? loadState === "ready"
+      ? snapshotAvailable
         ? "NO RECORD"
         : "UNAVAILABLE"
       : formatCurrencyAmount(
@@ -402,19 +415,19 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 <span>
                   MEMBER:{" "}
                   <strong style={{ color: "var(--ink)" }}>
-                    {viewModel?.caseRecord.memberId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                    {viewModel?.caseRecord.memberId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
                 </span>
                 <span>
                   POLICY:{" "}
                   <strong style={{ color: "var(--ink)" }}>
-                    {viewModel?.caseRecord.policyId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                    {viewModel?.caseRecord.policyId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
                 </span>
                 <span>
                   PROVIDER:{" "}
                   <strong style={{ color: "var(--ink)" }}>
-                    {viewModel?.caseRecord.hospitalId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                    {viewModel?.caseRecord.hospitalId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                   </strong>
                 </span>
               </div>
@@ -528,7 +541,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               CASE VERSION
             </span>
             <div style={{ fontSize: "18px", fontWeight: 700, color: "var(--ink)", marginTop: 6 }}>
-              {viewModel ? `v${viewModel.caseRecord.caseVersion}` : loadState === "ready" ? "NO RECORD" : "UNAVAILABLE"}
+              {viewModel ? `v${viewModel.caseRecord.caseVersion}` : snapshotAvailable ? "NO RECORD" : "UNAVAILABLE"}
             </div>
           </div>
         </div>
@@ -583,7 +596,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   MEMBER DOMAIN
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
-                  {viewModel?.caseRecord.memberId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                  {viewModel?.caseRecord.memberId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>
                   {viewModel
@@ -599,7 +612,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   POLICY DOMAIN
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
-                  {viewModel?.caseRecord.policyId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                  {viewModel?.caseRecord.policyId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>
                   {viewModel
@@ -613,7 +626,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   CLINICAL DOMAIN
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
-                  {viewModel?.caseRecord.diagnosis ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                  {viewModel?.caseRecord.diagnosis ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>
                   {viewModel
@@ -627,7 +640,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   PROVIDER DOMAIN
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
-                  {viewModel?.caseRecord.hospitalId ?? (loadState === "ready" ? "NO RECORD" : "UNAVAILABLE")}
+                  {viewModel?.caseRecord.hospitalId ?? (snapshotAvailable ? "NO RECORD" : "UNAVAILABLE")}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>
                   {viewModel
@@ -643,7 +656,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   CASE TIMING
                 </div>
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
-                  {viewModel?.caseRecord.plannedDate ? formatDate(viewModel.caseRecord.plannedDate) : loadState === "ready" ? "NO RECORD" : "UNAVAILABLE"}
+                  {viewModel?.caseRecord.plannedDate ? formatCalendarDate(viewModel.caseRecord.plannedDate) : snapshotAvailable ? "NO RECORD" : "UNAVAILABLE"}
                 </div>
                 <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>
                   {viewModel
@@ -659,7 +672,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--ink)" }}>
                   {viewModel
                     ? `${viewModel.evidence.count} persisted report${viewModel.evidence.count === 1 ? "" : "s"}`
-                    : loadState === "ready"
+                    : snapshotAvailable
                       ? "NO RECORD"
                       : "UNAVAILABLE"}
                 </div>

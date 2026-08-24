@@ -1,5 +1,12 @@
 import type { ApiEnvelope, CaseAggregate } from "./contracts";
 
+export type CommandCenterLoadState = "loading" | "ready" | "stale" | "noRecord" | "error";
+
+interface RequestErrorState {
+  kind: Extract<CommandCenterLoadState, "noRecord" | "error">;
+  message: string;
+}
+
 export interface CommandCenterViewModel {
   caseRecord: CaseAggregate["case"];
   status: CaseAggregate["status"];
@@ -31,13 +38,187 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
+function isString(value: unknown): value is string {
+  return typeof value === "string";
+}
+
+function isNullableString(value: unknown): value is string | null {
+  return value === null || typeof value === "string";
+}
+
+function isNullableNumber(value: unknown): value is number | null {
+  return value === null || typeof value === "number";
+}
+
+function isBoolean(value: unknown): value is boolean {
+  return typeof value === "boolean";
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === "string");
+}
+
+function isNullableRecord(value: unknown): value is Record<string, unknown> | null {
+  return value === null || isRecord(value);
+}
+
+function isCaseDto(value: unknown): value is CaseAggregate["case"] {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.caseId) &&
+    typeof value.caseVersion === "number" &&
+    isBoolean(value.patientConsentStatus) &&
+    isNullableString(value.patientConsentTimestamp) &&
+    isBoolean(value.hospitalClinicalConfirmationStatus) &&
+    isNullableString(value.hospitalConfirmationTimestamp) &&
+    isString(value.memberId) &&
+    isString(value.policyId) &&
+    isString(value.hospitalId) &&
+    isString(value.diagnosis) &&
+    isString(value.plannedProcedure) &&
+    isString(value.plannedDate) &&
+    isStringArray(value.evidenceReferences) &&
+    isString(value.documentProvenance) &&
+    isString(value.currentCaseStatus) &&
+    isString(value.sourceSystem) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isWorkflowRunDto(value: unknown): value is CaseAggregate["workflowRuns"][number] {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.caseId) &&
+    isString(value.workflowKey) &&
+    isString(value.workflowName) &&
+    isNullableString(value.yoxaExecutionId) &&
+    isString(value.idempotencyKey) &&
+    isString(value.status) &&
+    typeof value.attempt === "number" &&
+    isNullableRecord(value.inputPayload) &&
+    isNullableRecord(value.rawResponse) &&
+    isNullableRecord(value.normalizedOutput) &&
+    isNullableString(value.errorCode) &&
+    isNullableString(value.errorMessage) &&
+    isNullableString(value.queuedAt) &&
+    isNullableString(value.startedAt) &&
+    isNullableString(value.completedAt) &&
+    isNullableString(value.failedAt) &&
+    isString(value.createdAt) &&
+    isString(value.updatedAt)
+  );
+}
+
+function isEvidenceReportDto(value: unknown): value is CaseAggregate["evidenceReports"][number] {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.caseId) &&
+    typeof value.caseVersion === "number" &&
+    isString(value.agentName) &&
+    isString(value.reportStatus) &&
+    isRecord(value.findings) &&
+    isStringArray(value.citations) &&
+    isStringArray(value.unresolvedDependencies) &&
+    isString(value.toolStatus) &&
+    isString(value.completedAt)
+  );
+}
+
+function isAuditEventDto(value: unknown): value is CaseAggregate["auditEvents"][number] {
+  return (
+    isRecord(value) &&
+    isString(value.id) &&
+    isString(value.auditEventId) &&
+    isString(value.caseId) &&
+    typeof value.caseVersion === "number" &&
+    isString(value.eventType) &&
+    isRecord(value.eventData) &&
+    isNullableString(value.agentRunId) &&
+    isString(value.createdAt)
+  );
+}
+
+function isPendingApprovalDto(value: unknown): value is CaseAggregate["pendingApproval"] {
+  return value === null || (isRecord(value) && isString(value.workflowKey) && isString(value.status));
+}
+
+function isLatestDecisionDto(value: unknown): value is CaseAggregate["latestDecision"] {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      isString(value.id) &&
+      isString(value.humanDecisionId) &&
+      isString(value.caseId) &&
+      typeof value.caseVersion === "number" &&
+      typeof value.graphVersion === "number" &&
+      isString(value.packetId) &&
+      isString(value.reviewerIdentity) &&
+      isString(value.reviewerRole) &&
+      isString(value.outcome) &&
+      isString(value.writtenReason) &&
+      isStringArray(value.conditions) &&
+      isNullableNumber(value.authorisedAmount) &&
+      isNullableString(value.currency) &&
+      isStringArray(value.validityConditions) &&
+      isStringArray(value.clarificationFields) &&
+      isString(value.decisionTimestamp) &&
+      isString(value.createdAt))
+  );
+}
+
+function isLatestPacketDto(value: unknown): value is CaseAggregate["latestPacket"] {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      isString(value.id) &&
+      isString(value.packetId) &&
+      isString(value.caseId) &&
+      typeof value.caseVersion === "number" &&
+      typeof value.graphVersion === "number" &&
+      isString(value.generatedAt) &&
+      isNullableString(value.pdfUrl))
+  );
+}
+
+function isResolutionGraphDto(value: unknown): value is CaseAggregate["resolutionGraph"] {
+  return (
+    value === null ||
+    (isRecord(value) &&
+      isString(value.id) &&
+      isString(value.graphId) &&
+      isString(value.caseId) &&
+      typeof value.caseVersion === "number" &&
+      typeof value.graphVersion === "number" &&
+      isString(value.graphState) &&
+      Array.isArray(value.dependencyNodes) &&
+      isStringArray(value.unresolvedDependencies) &&
+      isStringArray(value.postAuthorisationConditions) &&
+      isStringArray(value.stateReasonCodes) &&
+      isString(value.nextSafeAction) &&
+      isRecord(value.sourceReportVersions) &&
+      isString(value.createdAt))
+  );
+}
+
 function isCaseAggregate(value: unknown): value is CaseAggregate {
   return (
     isRecord(value) &&
-    isRecord(value.case) &&
+    isCaseDto(value.case) &&
+    isString(value.status) &&
     Array.isArray(value.workflowRuns) &&
+    value.workflowRuns.every(isWorkflowRunDto) &&
     Array.isArray(value.evidenceReports) &&
-    Array.isArray(value.auditEvents)
+    value.evidenceReports.every(isEvidenceReportDto) &&
+    isResolutionGraphDto(value.resolutionGraph) &&
+    isLatestDecisionDto(value.latestDecision) &&
+    isLatestPacketDto(value.latestPacket) &&
+    isPendingApprovalDto(value.pendingApproval) &&
+    Array.isArray(value.auditEvents) &&
+    value.auditEvents.every(isAuditEventDto)
   );
 }
 
@@ -48,6 +229,67 @@ export function unwrapCaseAggregateEnvelope(value: unknown): CaseAggregate | nul
 
   const data = value.data as ApiEnvelope<unknown>["data"];
   return isCaseAggregate(data) ? data : null;
+}
+
+export function resolveCaseAggregateSnapshot(input: {
+  currentData: CaseAggregate | null;
+  nextData?: CaseAggregate;
+  requestError?: RequestErrorState;
+}): {
+  caseData: CaseAggregate | null;
+  loadState: Exclude<CommandCenterLoadState, "loading">;
+  error: string | null;
+} {
+  if (input.nextData) {
+    return {
+      caseData: input.nextData,
+      loadState: "ready",
+      error: null,
+    };
+  }
+
+  if (input.requestError) {
+    if (input.currentData) {
+      return {
+        caseData: input.currentData,
+        loadState: "stale",
+        error: input.requestError.message,
+      };
+    }
+
+    return {
+      caseData: null,
+      loadState: input.requestError.kind,
+      error: input.requestError.message,
+    };
+  }
+
+  return {
+    caseData: input.currentData,
+    loadState: input.currentData ? "ready" : "error",
+    error: null,
+  };
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+
+export function formatCalendarDate(value: string | null): string {
+  if (!value) {
+    return "NOT RECORDED";
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return value;
+  }
+
+  const [, year, month, day] = match;
+  const monthIndex = Number(month) - 1;
+  if (monthIndex < 0 || monthIndex >= MONTHS.length) {
+    return value;
+  }
+
+  return `${Number(day)} ${MONTHS[monthIndex]} ${year}`;
 }
 
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {
