@@ -391,6 +391,7 @@ describe("buildCaseAggregate", () => {
     expect(result).toMatchObject({
       success: true,
       data: {
+        readWarnings: [],
         workflowRuns: [],
         evidenceReports: [],
         resolutionGraph: null,
@@ -422,6 +423,34 @@ describe("buildCaseAggregate", () => {
     expect(result.data.latestPacket).toMatchObject({
       packetId: "packet-1",
       pdfUrl: null,
+    });
+  });
+
+  it("degrades a failed resolution graph read into a success envelope warning", () => {
+    const result = buildCaseAggregate({
+      caseRecord: caseRow,
+      workflowRuns: { data: [runningWorkflowRunRow], error: null },
+      evidenceReports: { data: [evidenceReportRow], error: null },
+      resolutionGraphs: {
+        data: null,
+        error: { code: "42501", message: "permission denied for table resolution_graphs" },
+      },
+      humanDecisions: { data: [latestDecisionRow], error: null },
+      decisionPackets: { data: [latestPacketRow], error: null },
+      auditEvents: { data: [auditEventRow], error: null },
+    });
+
+    expect(result).toMatchObject({
+      success: true,
+      data: {
+        readWarnings: [
+          {
+            source: "resolutionGraphs",
+            code: "READ_FAILED",
+          },
+        ],
+        resolutionGraph: null,
+      },
     });
   });
 

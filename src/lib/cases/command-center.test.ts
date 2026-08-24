@@ -32,6 +32,7 @@ function buildAggregate(overrides: Partial<CaseAggregate> = {}): CaseAggregate {
       updatedAt: "2026-08-24T12:00:00.000Z",
     },
     status: "DECISION_READY",
+    readWarnings: [],
     workflowRuns: [],
     evidenceReports: [],
     resolutionGraph: null,
@@ -155,6 +156,29 @@ describe("unwrapCaseAggregateEnvelope", () => {
       sources: ["policy"],
       owner: "policy",
     });
+  });
+
+  it("rejects malformed read warnings and accepts typed read warnings", () => {
+    const aggregate = buildAggregate();
+    const malformedReadWarningEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        readWarnings: [{ source: "resolutionGraphs", code: "WRONG_CODE" }],
+      },
+    };
+    const validReadWarningEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        readWarnings: [{ source: "resolutionGraphs", code: "READ_FAILED" }],
+      },
+    };
+
+    expect(unwrapCaseAggregateEnvelope(malformedReadWarningEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(validReadWarningEnvelope)?.readWarnings).toEqual([
+      { source: "resolutionGraphs", code: "READ_FAILED" },
+    ]);
   });
 });
 
@@ -376,6 +400,7 @@ describe("buildCommandCenterViewModel", () => {
     });
     expect(viewModel.packet.record?.packetId).toBe("packet-1");
     expect(viewModel.approval.pending?.status).toBe("WAITING_FOR_HUMAN");
+    expect(viewModel.resolutionGraph.availability).toBe("available");
   });
 
   it("keeps empty related records explicit instead of inventing operational state", () => {
@@ -388,6 +413,7 @@ describe("buildCommandCenterViewModel", () => {
     expect(viewModel.audit.events).toEqual([]);
     expect(viewModel.packet.record).toBeNull();
     expect(viewModel.approval.pending).toBeNull();
+    expect(viewModel.resolutionGraph.availability).toBe("noRecord");
   });
 
   it("never synthesizes decision or execution records from presentation defaults", () => {
@@ -406,5 +432,16 @@ describe("buildCommandCenterViewModel", () => {
     expect(viewModel.audit.events).toEqual([]);
     expect(viewModel.packet.record).toBeNull();
     expect(viewModel.approval.pending).toBeNull();
+  });
+
+  it("marks the resolution graph as unavailable when the aggregate carries a read warning", () => {
+    const viewModel = buildCommandCenterViewModel(
+      buildAggregate({
+        readWarnings: [{ source: "resolutionGraphs", code: "READ_FAILED" }],
+      })
+    );
+
+    expect(viewModel.resolutionGraph.record).toBeNull();
+    expect(viewModel.resolutionGraph.availability).toBe("unavailable");
   });
 });

@@ -9,13 +9,13 @@ import type {
 const REQUIRED_READ_SOURCES = [
   "workflowRuns",
   "evidenceReports",
-  "resolutionGraphs",
   "humanDecisions",
   "decisionPackets",
   "auditEvents",
 ] as const;
 
 type RequiredReadSource = (typeof REQUIRED_READ_SOURCES)[number];
+type DegradableReadSource = "resolutionGraphs";
 
 export class AggregateReadError extends Error {
   readonly code = "AGGREGATE_READ_FAILED";
@@ -45,12 +45,28 @@ function getReadFailures(input: BuildCaseAggregateInput): RequiredReadSource[] {
   return REQUIRED_READ_SOURCES.filter((source) => input[source].error);
 }
 
+function getReadWarnings(input: BuildCaseAggregateInput): Array<{
+  source: DegradableReadSource;
+  code: "READ_FAILED";
+}> {
+  return input.resolutionGraphs.error
+    ? [
+        {
+          source: "resolutionGraphs",
+          code: "READ_FAILED",
+        },
+      ]
+    : [];
+}
+
 export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<CaseAggregate> {
   const readFailures = getReadFailures(input);
 
   if (readFailures.length > 0) {
     throw new AggregateReadError(readFailures);
   }
+
+  const readWarnings = getReadWarnings(input);
 
   const workflowRuns = (input.workflowRuns.data ?? []).map((workflowRun) => ({
     id: workflowRun.id,
@@ -180,6 +196,7 @@ export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<
         updatedAt: input.caseRecord.updated_at,
       },
       status: input.caseRecord.current_case_status,
+      readWarnings,
       workflowRuns,
       evidenceReports,
       resolutionGraph,

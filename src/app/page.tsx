@@ -157,79 +157,67 @@ export default function LandingPage() {
 
     function drawScatter() {
       const canvas = document.getElementById("scatterPixels") as HTMLCanvasElement | null;
-      if (!canvas) return;
+      if (!canvas || !canvas.parentElement) return;
       const { ctx, w, h } = fitCanvas(canvas);
       if (!ctx) return;
 
-      const originSec = document.getElementById("originSection");
-      let progress = 0.5;
-      if (originSec) {
-        const rect = originSec.getBoundingClientRect();
-        const dist = originSec.offsetHeight - window.innerHeight;
-        if (dist > 0) progress = Math.max(0, Math.min(1, -rect.top / dist));
-      }
-
-      const rand = seedRand(9042);
-      const count = Math.floor(Math.min(360, w / 3.5));
+      const t = performance.now() * 0.0015;
       ctx.clearRect(0, 0, w, h);
 
-      // 6 Domain Node Centers (MEMBER, POLICY, CLINICAL, PROVIDER, FINANCIAL, EVIDENCE)
-      const domainNodes = [
-        { x: w * 0.20, y: h * 0.30 }, // MEMBER
-        { x: w * 0.50, y: h * 0.22 }, // POLICY
-        { x: w * 0.80, y: h * 0.30 }, // CLINICAL
-        { x: w * 0.20, y: h * 0.70 }, // PROVIDER
-        { x: w * 0.50, y: h * 0.78 }, // FINANCIAL
-        { x: w * 0.80, y: h * 0.70 }, // EVIDENCE
-      ];
       const centerCore = { x: w * 0.50, y: h * 0.50 };
+      const domainNodes = [
+        { x: w * 0.14, y: h * 0.16 }, // MEMBER
+        { x: w * 0.86, y: h * 0.18 }, // POLICY
+        { x: w * 0.12, y: h * 0.50 }, // CLINICAL
+        { x: w * 0.88, y: h * 0.52 }, // PROVIDER
+        { x: w * 0.16, y: h * 0.84 }, // FINANCIAL
+        { x: w * 0.84, y: h * 0.86 }, // EVIDENCE
+      ];
 
-      const colors = [COLORS.forest, COLORS.green, COLORS.lime];
+      // Draw subtle connecting grid lines & travelling pulse pixels to central core
+      for (let idx = 0; idx < domainNodes.length; idx++) {
+        const node = domainNodes[idx];
+        ctx.strokeStyle = COLORS.grid;
+        ctx.lineWidth = 0.8;
+        ctx.globalAlpha = 0.35;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.moveTo(node.x, node.y);
+        ctx.lineTo(centerCore.x, centerCore.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
 
-      for (let i = 0; i < count; i++) {
-        const baseX = rand() * w;
-        const baseY = rand() * h;
-        const targetNode = domainNodes[i % domainNodes.length];
-
-        let curX = baseX;
-        let curY = baseY;
-
-        if (progress < 0.30) {
-          // 0-30%: Fragmented random positions
-          curX = baseX;
-          curY = baseY;
-        } else if (progress < 0.70) {
-          // 30-70%: Gather into 6 domain nodes
-          const p = (progress - 0.30) / 0.40;
-          curX = baseX * (1 - p) + targetNode.x * p + (rand() - 0.5) * 40;
-          curY = baseY * (1 - p) + targetNode.y * p + (rand() - 0.5) * 40;
-        } else {
-          // 70-100%: Connect domain nodes to central COVERAGE TWIN core
-          const p = (progress - 0.70) / 0.30;
-          const nodeX = targetNode.x + (rand() - 0.5) * 30;
-          const nodeY = targetNode.y + (rand() - 0.5) * 30;
-          curX = nodeX * (1 - p * 0.55) + centerCore.x * (p * 0.55);
-          curY = nodeY * (1 - p * 0.55) + centerCore.y * (p * 0.55);
-        }
-
-        const s = 6;
-        const color = progress > 0.65 ? (i % 2 === 0 ? COLORS.lime : COLORS.green) : colors[i % colors.length];
-        ctx.globalAlpha = 0.60 + rand() * 0.40;
-        ctx.fillStyle = color;
-        ctx.fillRect(Math.round(curX / s) * s, Math.round(curY / s) * s, s - 1, s - 1);
+        // Travelling Signal Lime Data Pulses along connector line
+        const pulseProgress = (t * 0.6 + idx * 0.18) % 1.0;
+        const pulseX = node.x + (centerCore.x - node.x) * pulseProgress;
+        const pulseY = node.y + (centerCore.y - node.y) * pulseProgress;
+        const ps = 6;
+        ctx.globalAlpha = 0.9;
+        ctx.fillStyle = COLORS.lime;
+        ctx.fillRect(Math.round(pulseX / ps) * ps, Math.round(pulseY / ps) * ps, ps, ps);
       }
 
-      // Draw connecting grid lines when structured
-      if (progress > 0.55) {
-        ctx.globalAlpha = (progress - 0.55) * 1.8;
-        ctx.strokeStyle = COLORS.lime;
-        ctx.lineWidth = 1;
-        for (const node of domainNodes) {
-          ctx.beginPath();
-          ctx.moveTo(node.x, node.y);
-          ctx.lineTo(centerCore.x, centerCore.y);
-          ctx.stroke();
-        }
+      // Draw floating background particle cloud converging toward center
+      const rand = seedRand(9042);
+      const count = Math.floor(Math.min(280, w / 4.5));
+      for (let i = 0; i < count; i++) {
+        const u = i / count;
+        const targetNode = domainNodes[i % domainNodes.length];
+        
+        // Blend particle positions dynamically between node clusters and central core
+        const phase = (t * 0.8 + u * 6.28);
+        const floatX = Math.sin(phase) * 14;
+        const floatY = Math.cos(phase * 0.7) * 14;
+
+        const gather = Math.sin(t * 0.5 + u * 3.14) * 0.3 + 0.5;
+        const x = targetNode.x * (1 - gather) + centerCore.x * gather + floatX;
+        const y = targetNode.y * (1 - gather) + centerCore.y * gather + floatY;
+
+        const s = 5 + Math.floor(rand() * 3);
+        const color = (i % 3 === 0) ? COLORS.lime : ((i % 3 === 1) ? COLORS.green : COLORS.forest);
+        ctx.globalAlpha = 0.55 + rand() * 0.40;
+        ctx.fillStyle = color;
+        ctx.fillRect(Math.round(x / s) * s, Math.round(y / s) * s, s - 1, s - 1);
       }
       ctx.globalAlpha = 1;
     }
@@ -404,15 +392,15 @@ export default function LandingPage() {
 
             <article className="case-card">
               <div className="case-visual visual-re-eval">
-                <div className="mini-ui">
-                  <span className="mini-kicker">STAGE 02 • RE-EVALUATION</span>
-                  <strong style={{ fontSize: "24px" }}>Δ FACT CHANGE</strong>
-                  <small>Material fact change detected in treatment plan.</small>
+                <div className="mini-ui dark-ui">
+                  <span className="mini-kicker lime-kicker">STAGE 02 • RE-EVALUATION</span>
+                  <strong style={{ fontSize: "28px", color: "var(--lime)" }}>Δ FACT CHANGE</strong>
+                  <small style={{ color: "#DCE2DD" }}>Material fact change detected in treatment plan.</small>
                   <div className="mini-bars">
-                    <span style={createMiniBarStyle("100%", "var(--warning)")}></span>
-                    <span style={createMiniBarStyle("65%", "var(--warning)")}></span>
+                    <span style={createMiniBarStyle("100%", "var(--lime)")}></span>
+                    <span style={createMiniBarStyle("65%", "var(--green)")}></span>
                   </div>
-                  <span className="mini-status warning">● RE-CALIBRATED</span>
+                  <span className="mini-status">● RE-CALIBRATED</span>
                 </div>
               </div>
               <h3>Material change</h3>

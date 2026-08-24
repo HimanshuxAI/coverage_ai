@@ -197,9 +197,18 @@ export interface PendingApprovalDto {
   status: string;
 }
 
+export type CaseAggregateReadWarningSource = "resolutionGraphs";
+export type CaseAggregateReadWarningCode = "READ_FAILED";
+
+export interface CaseAggregateReadWarning {
+  source: CaseAggregateReadWarningSource;
+  code: CaseAggregateReadWarningCode;
+}
+
 export interface CaseAggregate {
   case: CaseDto;
   status: string;
+  readWarnings: CaseAggregateReadWarning[];
   workflowRuns: WorkflowRunDto[];
   evidenceReports: EvidenceReportDto[];
   resolutionGraph: ResolutionGraphDto | null;

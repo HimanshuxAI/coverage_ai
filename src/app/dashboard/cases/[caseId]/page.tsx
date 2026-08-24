@@ -725,12 +725,27 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 PERSISTED DECISION SUPPORT FACTORS
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, fontSize: "13px" }}>
-                {viewModel && viewModel.decision.factors.length > 0 ? (
-                  viewModel.decision.factors.map((factor) => (
-                    <div key={factor} style={{ color: "var(--forest)", fontWeight: 600 }}>
-                      {factor}
-                    </div>
-                  ))
+                {viewModel ? (
+                  <>
+                    {viewModel.resolutionGraph.availability === "unavailable" ? (
+                      <div style={{ color: "#D94A4A", fontWeight: 700 }}>
+                        RESOLUTION GRAPH UNAVAILABLE
+                      </div>
+                    ) : null}
+                    {viewModel.decision.factors.length > 0 ? (
+                      viewModel.decision.factors.map((factor) => (
+                        <div key={factor} style={{ color: "var(--forest)", fontWeight: 600 }}>
+                          {factor}
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ color: "var(--muted)" }}>
+                        {viewModel.resolutionGraph.availability === "noRecord"
+                          ? "No persisted resolution graph recorded yet."
+                          : summaryStateMessage ?? "No persisted decision factors recorded."}
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div style={{ color: "var(--muted)" }}>
                     {summaryStateMessage ?? "No persisted decision factors recorded."}

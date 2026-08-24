@@ -31,7 +31,10 @@ export interface CommandCenterViewModel {
   approval: {
     pending: CaseAggregate["pendingApproval"];
   };
-  resolutionGraph: CaseAggregate["resolutionGraph"];
+  resolutionGraph: {
+    record: CaseAggregate["resolutionGraph"];
+    availability: "available" | "noRecord" | "unavailable";
+  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -161,6 +164,14 @@ function isPendingApprovalDto(value: unknown): value is CaseAggregate["pendingAp
   return value === null || (isRecord(value) && isString(value.workflowKey) && isString(value.status));
 }
 
+function isCaseAggregateReadWarning(value: unknown): value is CaseAggregate["readWarnings"][number] {
+  return (
+    isRecord(value) &&
+    value.source === "resolutionGraphs" &&
+    value.code === "READ_FAILED"
+  );
+}
+
 function isLatestDecisionDto(value: unknown): value is CaseAggregate["latestDecision"] {
   return (
     value === null ||
@@ -225,6 +236,8 @@ function isCaseAggregate(value: unknown): value is CaseAggregate {
     isRecord(value) &&
     isCaseDto(value.case) &&
     isString(value.status) &&
+    Array.isArray(value.readWarnings) &&
+    value.readWarnings.every(isCaseAggregateReadWarning) &&
     Array.isArray(value.workflowRuns) &&
     value.workflowRuns.every(isWorkflowRunDto) &&
     Array.isArray(value.evidenceReports) &&
@@ -310,6 +323,14 @@ export function formatCalendarDate(value: string | null): string {
 
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {
   const factors: string[] = [];
+  const resolutionGraphAvailability = aggregate.resolutionGraph
+    ? "available"
+    : aggregate.readWarnings.some(
+          (readWarning) =>
+            readWarning.source === "resolutionGraphs" && readWarning.code === "READ_FAILED"
+        )
+      ? "unavailable"
+      : "noRecord";
 
   const writtenReason = aggregate.latestDecision?.writtenReason?.trim();
   if (writtenReason) {
@@ -348,6 +369,9 @@ export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCe
     approval: {
       pending: aggregate.pendingApproval,
     },
-    resolutionGraph: aggregate.resolutionGraph,
+    resolutionGraph: {
+      record: aggregate.resolutionGraph,
+      availability: resolutionGraphAvailability,
+    },
   };
 }

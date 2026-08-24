@@ -233,6 +233,7 @@ describe("GET /api/cases/[caseId]", () => {
     await expect(response.json()).resolves.toMatchObject({
       success: true,
       data: {
+        readWarnings: [],
         case: {
           caseId: "CASE-CT-REAL-001",
         },
@@ -243,6 +244,39 @@ describe("GET /api/cases/[caseId]", () => {
         latestPacket: null,
         pendingApproval: null,
         auditEvents: [],
+      },
+    });
+  });
+
+  it("returns 200 with a resolutionGraphs read warning when that optional read fails", async () => {
+    createClient.mockResolvedValue(
+      buildSupabaseClient({
+        caseResult: { data: caseRow, error: null },
+        resolutionGraphsResult: {
+          data: null,
+          error: {
+            code: "42501",
+            message: "permission denied for table resolution_graphs",
+          },
+        },
+      })
+    );
+
+    const response = await GET(makeRequest(), {
+      params: Promise.resolve({ caseId: "CASE-CT-REAL-001" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        readWarnings: [
+          {
+            source: "resolutionGraphs",
+            code: "READ_FAILED",
+          },
+        ],
+        resolutionGraph: null,
       },
     });
   });
