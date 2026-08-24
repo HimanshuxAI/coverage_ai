@@ -7,7 +7,7 @@ Coverage Twin is a Next.js 16 application for operating a six-workflow health-co
 - Live URL: `https://coverageai-production.up.railway.app`
 - Read-only production checks on August 24, 2026 returned `200` for `/`, `/dashboard`, and `/api/health`.
 - Production `/api/health` reported `status: "ok"`, `database.configured: true`, `database.reachable: true`, and all six workflow configs present.
-- The hardening documented in this repository is local work until a future push and deploy. Read-only production HTML still shows older metadata on `/` and `/dashboard`, so do not assume the local Task 1-5 changes are live.
+- Before any demo, verify Railway is serving the current `origin/main` commit and repeat the read-only production smoke checks above.
 
 ## Local Setup
 

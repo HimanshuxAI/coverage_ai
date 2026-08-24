@@ -1,6 +1,6 @@
 # Final Interaction Matrix
 
-Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/dashboard/cases/[caseId]/page.tsx`, helper modules under `src/lib`, the Task 2-4 hardening reports, and fresh read-only route checks. This matrix describes the hardened local repository state after Tasks 1-4. It does not claim those UI changes are already deployed to production.
+Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx`, `src/app/dashboard/cases/[caseId]/page.tsx`, helper modules under `src/lib`, the Task 2-4 hardening reports, and fresh read-only route checks. This matrix describes the hardened repository state and should be checked against production after each deployment.
 
 ## Route Summary
 
