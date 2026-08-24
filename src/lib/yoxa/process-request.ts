@@ -1,5 +1,4 @@
-import { workflowRegistry } from "./registry";
-import type { YoxaWorkflowKey } from "./types";
+import { YOXA_WORKFLOW_KEYS, type YoxaWorkflowKey } from "./types";
 
 interface InvalidWorkflowKeyError {
   code: "INVALID_WORKFLOW_KEY";
@@ -16,9 +15,7 @@ export type ProcessRequestParseResult =
       error: InvalidWorkflowKeyError;
     };
 
-const canonicalWorkflowKeys = new Set<YoxaWorkflowKey>(
-  Object.keys(workflowRegistry) as YoxaWorkflowKey[]
-);
+const canonicalWorkflowKeys = new Set<YoxaWorkflowKey>(YOXA_WORKFLOW_KEYS);
 
 function isWorkflowKey(value: unknown): value is YoxaWorkflowKey {
   return typeof value === "string" && canonicalWorkflowKeys.has(value as YoxaWorkflowKey);

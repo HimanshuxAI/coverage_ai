@@ -3,16 +3,9 @@
    Zero hardcoded secrets. All secrets read securely from process.env.
    ====================================================== */
 
-export const YOXA_WORKFLOW_KEYS = [
-  "intake",
-  "preauth",
-  "materialChange",
-  "discharge",
-  "settlement",
-  "appeal",
-] as const;
+import type { YoxaWorkflowKey } from "@/lib/yoxa/types";
 
-export type WorkflowKey = (typeof YOXA_WORKFLOW_KEYS)[number];
+export type WorkflowKey = YoxaWorkflowKey;
 
 const yoxaWorkflows = {
   intake: {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getStatusPresentation } from "@/lib/workflow/presentation";
-import type { YoxaWorkflowKey } from "@/lib/yoxa/types";
+import { YOXA_WORKFLOW_KEYS, type YoxaWorkflowKey } from "@/lib/yoxa/types";
 
 import {
   buildProcessRequestBody,
@@ -10,14 +10,7 @@ import {
 } from "./process-request";
 import type { YoxaWorkflowDefinition } from "./types";
 
-const canonicalWorkflowKeys = [
-  "intake",
-  "preauth",
-  "materialChange",
-  "discharge",
-  "settlement",
-  "appeal",
-] as const satisfies readonly YoxaWorkflowKey[];
+const canonicalWorkflowKeys = YOXA_WORKFLOW_KEYS satisfies readonly YoxaWorkflowKey[];
 
 const baseWorkflowDefinition = {
   key: "intake",
@@ -203,6 +196,11 @@ describe("getWorkflowDefinition", () => {
     {
       label: "invalid trigger URL",
       override: "not-a-url",
+      reason: "invalid_url",
+    },
+    {
+      label: "http trigger URL",
+      override: "http://yoxa.example/discharge/trigger",
       reason: "invalid_url",
     },
   ])("rejects a $label with a machine-readable configuration error", async ({ override, reason }) => {
