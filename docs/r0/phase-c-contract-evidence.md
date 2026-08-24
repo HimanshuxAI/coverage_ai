@@ -55,14 +55,147 @@ The existing-active-run path returns resume-tracking proof rather than starting 
 - `currentRun.status` is `RUNNING`
 - `currentRun.terminal` is `false`
 
-## Inspector and proof fields
+### Exact response skeletons
 
-The command-center run inspector exposes these persisted fields:
+Fresh accepted path (`HTTP 202`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "caseId": "case-123",
+    "status": "AUTHORISED_BY_HUMAN",
+    "workflowRun": {
+      "id": "run-accepted-1",
+      "case_id": "case-123",
+      "workflow_key": "discharge",
+      "workflow_name": "Discharge",
+      "yoxa_execution_id": null,
+      "idempotency_key": "wf_discharge_case-123_1",
+      "status": "RUNNING",
+      "attempt": 1,
+      "input_payload": { "triggered_by": "api" },
+      "raw_response": {
+        "statusCode": 202,
+        "body": { "accepted": true },
+        "rawBody": "{\"accepted\":true}"
+      },
+      "normalized_output": {
+        "triggered": true,
+        "statusCode": 202,
+        "timestamp": "<iso timestamp>"
+      },
+      "error_code": null,
+      "error_message": null,
+      "queued_at": "2026-08-24T11:00:00.000Z",
+      "started_at": "2026-08-24T11:00:05.000Z",
+      "completed_at": null,
+      "failed_at": null,
+      "created_at": "2026-08-24T11:00:00.000Z",
+      "updated_at": "2026-08-24T11:00:05.000Z"
+    },
+    "executionProof": {
+      "state": "running",
+      "durableRun": {
+        "workflowRunId": "run-accepted-1",
+        "idempotencyKey": "wf_discharge_case-123_1",
+        "persistedAt": "2026-08-24T11:00:00.000Z",
+        "queuedAt": "2026-08-24T11:00:00.000Z"
+      },
+      "requestDispatch": {
+        "dispatched": true,
+        "dispatchedAt": "2026-08-24T11:00:05.000Z"
+      },
+      "acceptedResponse": {
+        "accepted": true,
+        "upstreamStatusCode": 202,
+        "yoxaExecutionId": null
+      },
+      "currentRun": {
+        "status": "RUNNING",
+        "terminal": false,
+        "startedAt": "2026-08-24T11:00:05.000Z",
+        "completedAt": null,
+        "failedAt": null,
+        "updatedAt": "2026-08-24T11:00:05.000Z"
+      }
+    }
+  }
+}
+```
+
+Duplicate active-run path (`HTTP 200`):
+
+```json
+{
+  "success": true,
+  "data": {
+    "caseId": "case-123",
+    "status": "AUTHORISED_BY_HUMAN",
+    "message": "Existing active workflow run already in progress",
+    "workflowRun": {
+      "id": "run-existing-1",
+      "case_id": "case-123",
+      "workflow_key": "discharge",
+      "workflow_name": "Discharge",
+      "yoxa_execution_id": "yoxa-run-123",
+      "idempotency_key": "wf_discharge_case-123_1",
+      "status": "RUNNING",
+      "attempt": 1,
+      "input_payload": { "triggered_by": "api" },
+      "raw_response": {
+        "statusCode": 202,
+        "body": { "workflow_run_id": "yoxa-run-123" }
+      },
+      "normalized_output": {
+        "triggered": true,
+        "statusCode": 202
+      },
+      "error_code": null,
+      "error_message": null,
+      "queued_at": "2026-08-24T11:00:00.000Z",
+      "started_at": "2026-08-24T11:00:05.000Z",
+      "completed_at": null,
+      "failed_at": null,
+      "created_at": "2026-08-24T11:00:00.000Z",
+      "updated_at": "2026-08-24T11:00:05.000Z"
+    },
+    "executionProof": {
+      "state": "resume-tracking",
+      "durableRun": {
+        "workflowRunId": "run-existing-1",
+        "idempotencyKey": "wf_discharge_case-123_1",
+        "persistedAt": "2026-08-24T11:00:00.000Z",
+        "queuedAt": "2026-08-24T11:00:00.000Z"
+      },
+      "requestDispatch": {
+        "dispatched": true,
+        "dispatchedAt": "2026-08-24T11:00:05.000Z"
+      },
+      "acceptedResponse": {
+        "accepted": true,
+        "upstreamStatusCode": 202,
+        "yoxaExecutionId": "yoxa-run-123"
+      },
+      "currentRun": {
+        "status": "RUNNING",
+        "terminal": false,
+        "startedAt": "2026-08-24T11:00:05.000Z",
+        "completedAt": null,
+        "failedAt": null,
+        "updatedAt": "2026-08-24T11:00:05.000Z"
+      }
+    }
+  }
+}
+```
+
+## Inspector fields
+
+Persisted source fields shown in the command-center run inspector:
 
 - `workflowName`
 - `workflowKey`
-- `statusLabel`
-- `proofStateLabel`
 - `localRunId`
 - `yoxaExecutionId`
 - `idempotencyKey`
@@ -74,6 +207,11 @@ The command-center run inspector exposes these persisted fields:
 - `failedAt`
 - `createdAt`
 - `updatedAt`
+
+Derived display fields shown in the command-center run inspector:
+
+- `statusLabel`
+- `proofStateLabel`
 - `upstreamStatusCode`
 - `acceptedResponse`
 - `terminalState`
