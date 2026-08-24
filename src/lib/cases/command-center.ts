@@ -128,6 +128,21 @@ function isEvidenceReportDto(value: unknown): value is CaseAggregate["evidenceRe
   );
 }
 
+function isDependencyNodeDto(
+  value: unknown
+): value is NonNullable<CaseAggregate["resolutionGraph"]>["dependencyNodes"][number] {
+  return (
+    isRecord(value) &&
+    isString(value.dependencyId) &&
+    isString(value.description) &&
+    isString(value.status) &&
+    isStringArray(value.sources) &&
+    isString(value.owner) &&
+    isString(value.downstreamImpact) &&
+    isString(value.nextSafeAction)
+  );
+}
+
 function isAuditEventDto(value: unknown): value is CaseAggregate["auditEvents"][number] {
   return (
     isRecord(value) &&
@@ -195,6 +210,7 @@ function isResolutionGraphDto(value: unknown): value is CaseAggregate["resolutio
       typeof value.graphVersion === "number" &&
       isString(value.graphState) &&
       Array.isArray(value.dependencyNodes) &&
+      value.dependencyNodes.every(isDependencyNodeDto) &&
       isStringArray(value.unresolvedDependencies) &&
       isStringArray(value.postAuthorisationConditions) &&
       isStringArray(value.stateReasonCodes) &&

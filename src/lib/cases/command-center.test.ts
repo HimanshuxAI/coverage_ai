@@ -83,6 +83,79 @@ describe("unwrapCaseAggregateEnvelope", () => {
     expect(unwrapCaseAggregateEnvelope(malformedEvidenceEnvelope)).toBeNull();
     expect(unwrapCaseAggregateEnvelope(malformedAuditEnvelope)).toBeNull();
   });
+
+  it("rejects malformed dependency nodes and accepts valid dependency node DTOs", () => {
+    const aggregate = buildAggregate();
+    const malformedDependencyNodeEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        resolutionGraph: {
+          id: "graph-row-1",
+          graphId: "graph-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          graphState: "DECISION_READY",
+          dependencyNodes: [
+            {
+              dependencyId: "dep-1",
+              description: "Policy evidence collected",
+              status: "RESOLVED",
+              sources: [123],
+              owner: "policy",
+              downstreamImpact: "ready-for-review",
+              nextSafeAction: "Proceed to human review",
+            },
+          ],
+          unresolvedDependencies: [],
+          postAuthorisationConditions: [],
+          stateReasonCodes: ["POLICY_CLEAR"],
+          nextSafeAction: "Prepare decision packet",
+          sourceReportVersions: { policy: "policy-v1" },
+          createdAt: "2026-08-24T10:50:00.000Z",
+        },
+      },
+    };
+    const validDependencyNodeEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        resolutionGraph: {
+          id: "graph-row-1",
+          graphId: "graph-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          graphState: "DECISION_READY",
+          dependencyNodes: [
+            {
+              dependencyId: "dep-1",
+              description: "Policy evidence collected",
+              status: "RESOLVED",
+              sources: ["policy"],
+              owner: "policy",
+              downstreamImpact: "ready-for-review",
+              nextSafeAction: "Proceed to human review",
+            },
+          ],
+          unresolvedDependencies: [],
+          postAuthorisationConditions: [],
+          stateReasonCodes: ["POLICY_CLEAR"],
+          nextSafeAction: "Prepare decision packet",
+          sourceReportVersions: { policy: "policy-v1" },
+          createdAt: "2026-08-24T10:50:00.000Z",
+        },
+      },
+    } satisfies ApiEnvelope<CaseAggregate>;
+
+    expect(unwrapCaseAggregateEnvelope(malformedDependencyNodeEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(validDependencyNodeEnvelope)?.resolutionGraph?.dependencyNodes[0]).toMatchObject({
+      dependencyId: "dep-1",
+      sources: ["policy"],
+      owner: "policy",
+    });
+  });
 });
 
 describe("resolveCaseAggregateSnapshot", () => {
