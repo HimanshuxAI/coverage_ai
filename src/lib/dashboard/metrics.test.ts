@@ -5,6 +5,7 @@ import type { CaseRecord } from "@/types/workflow";
 import {
   calculateDashboardMetrics,
   formatDashboardMetricValue,
+  getSnapshotIndicator,
 } from "./metrics";
 
 function makeCaseRecord(
@@ -70,5 +71,37 @@ describe("formatDashboardMetricValue", () => {
     expect(formatDashboardMetricValue(0)).toBe("00");
     expect(formatDashboardMetricValue(5)).toBe("05");
     expect(formatDashboardMetricValue(null)).toBe("—");
+  });
+});
+
+describe("getSnapshotIndicator", () => {
+  it("returns snapshot unavailable whenever the case snapshot fails, even if health succeeds", () => {
+    expect(
+      getSnapshotIndicator({
+        systemHealth: {
+          status: "ok",
+          timestamp: "2026-08-24T10:00:00.000Z",
+          database: {
+            configured: true,
+            reachable: true,
+          },
+          workflows: {
+            intake: { configured: true },
+            preauth: { configured: true },
+            materialChange: { configured: true },
+            discharge: { configured: true },
+            settlement: { configured: true },
+            appeal: { configured: true },
+          },
+        },
+        caseSnapshotUnavailable: true,
+        loading: false,
+      })
+    ).toMatchObject({
+      label: "SNAPSHOT UNAVAILABLE",
+      background: "var(--ink)",
+      color: "var(--surface)",
+      dot: "var(--surface)",
+    });
   });
 });

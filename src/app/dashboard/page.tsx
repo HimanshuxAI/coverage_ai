@@ -6,6 +6,7 @@ import {
   DASHBOARD_WORKFLOW_KEYS,
   calculateDashboardMetrics,
   formatDashboardMetricValue,
+  getSnapshotIndicator,
   type HealthStatus,
 } from "@/lib/dashboard/metrics";
 import styles from "@/components/landing/landing.module.css";
@@ -32,46 +33,6 @@ function getWorkflowLabel(workflowKey: (typeof DASHBOARD_WORKFLOW_KEYS)[number])
     case "appeal":
       return "APPEAL CONFIG";
   }
-}
-
-function getSnapshotIndicator(
-  systemHealth: HealthStatus | null,
-  caseSnapshotUnavailable: boolean,
-  loading: boolean
-) {
-  if (loading) {
-    return {
-      background: "var(--ink)",
-      color: "var(--surface)",
-      dot: "var(--surface)",
-      label: "LOADING SNAPSHOT",
-    };
-  }
-
-  if (caseSnapshotUnavailable && systemHealth === null) {
-    return {
-      background: "var(--ink)",
-      color: "var(--surface)",
-      dot: "var(--surface)",
-      label: "SNAPSHOT UNAVAILABLE",
-    };
-  }
-
-  if (caseSnapshotUnavailable || systemHealth === null || systemHealth.status === "degraded") {
-    return {
-      background: "var(--ink)",
-      color: "var(--sand)",
-      dot: "var(--sand)",
-      label: "SNAPSHOT DEGRADED",
-    };
-  }
-
-  return {
-    background: "var(--forest)",
-    color: "var(--lime)",
-    dot: "var(--lime)",
-    label: "SNAPSHOT AVAILABLE",
-  };
 }
 
 export default function CoverageOperationsDashboard() {
@@ -166,11 +127,11 @@ export default function CoverageOperationsDashboard() {
       : cases.find((caseRecord) =>
           caseRecord.case_id.includes("REAL") || caseRecord.case_id.includes("0001")
         ) ?? cases[0] ?? null;
-  const snapshotIndicator = getSnapshotIndicator(
+  const snapshotIndicator = getSnapshotIndicator({
     systemHealth,
     caseSnapshotUnavailable,
-    loading
-  );
+    loading,
+  });
   const configuredWorkflowCount = systemHealth
     ? DASHBOARD_WORKFLOW_KEYS.filter(
         (workflowKey) => systemHealth.workflows[workflowKey].configured
@@ -552,7 +513,7 @@ export default function CoverageOperationsDashboard() {
             </div>
             <div style={{ borderLeft: "2px solid var(--grid)", paddingLeft: 12 }}>
               <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--muted)" }}>05 CLOSED</div>
-              <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>Durable Audit Trail</div>
+              <div style={{ fontSize: "12px", color: "var(--muted)", marginTop: 4 }}>Case Record Finalised</div>
             </div>
           </div>
         </div>

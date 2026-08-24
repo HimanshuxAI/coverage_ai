@@ -69,10 +69,12 @@ describe("GET /api/health", () => {
     );
 
     const response = await GET();
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    expect(body).toEqual({
       status: "ok",
+      timestamp: expect.any(String),
       database: {
         configured: true,
         reachable: true,
@@ -97,10 +99,12 @@ describe("GET /api/health", () => {
     );
 
     const response = await GET();
+    const body = await response.json();
 
     expect(response.status).toBe(200);
-    await expect(response.json()).resolves.toMatchObject({
+    expect(body).toEqual({
       status: "degraded",
+      timestamp: expect.any(String),
       database: {
         configured: true,
         reachable: false,

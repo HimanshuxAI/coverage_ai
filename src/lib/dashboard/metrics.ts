@@ -28,6 +28,23 @@ export interface HealthStatus {
   workflows: Record<DashboardWorkflowKey, { configured: boolean }>;
 }
 
+export interface SnapshotIndicator {
+  background: string;
+  color: string;
+  dot: string;
+  label:
+    | "LOADING SNAPSHOT"
+    | "SNAPSHOT UNAVAILABLE"
+    | "SNAPSHOT DEGRADED"
+    | "SNAPSHOT AVAILABLE";
+}
+
+export interface SnapshotIndicatorInput {
+  systemHealth: HealthStatus | null;
+  caseSnapshotUnavailable: boolean;
+  loading: boolean;
+}
+
 const ACTIVE_EXCLUDED_STATUSES = new Set<CaseRecord["current_case_status"]>([
   "AUTHORISED_BY_HUMAN",
   "DECLINED_OR_REDUCED_BY_HUMAN",
@@ -62,4 +79,44 @@ export function calculateDashboardMetrics(cases: CaseRecord[]): DashboardMetrics
 
 export function formatDashboardMetricValue(value: number | null): string {
   return value === null ? "—" : value.toString().padStart(2, "0");
+}
+
+export function getSnapshotIndicator({
+  systemHealth,
+  caseSnapshotUnavailable,
+  loading,
+}: SnapshotIndicatorInput): SnapshotIndicator {
+  if (loading) {
+    return {
+      background: "var(--ink)",
+      color: "var(--surface)",
+      dot: "var(--surface)",
+      label: "LOADING SNAPSHOT",
+    };
+  }
+
+  if (caseSnapshotUnavailable) {
+    return {
+      background: "var(--ink)",
+      color: "var(--surface)",
+      dot: "var(--surface)",
+      label: "SNAPSHOT UNAVAILABLE",
+    };
+  }
+
+  if (systemHealth === null || systemHealth.status === "degraded") {
+    return {
+      background: "var(--ink)",
+      color: "var(--sand)",
+      dot: "var(--sand)",
+      label: "SNAPSHOT DEGRADED",
+    };
+  }
+
+  return {
+    background: "var(--forest)",
+    color: "var(--lime)",
+    dot: "var(--lime)",
+    label: "SNAPSHOT AVAILABLE",
+  };
 }
