@@ -476,7 +476,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
   const snapshotAvailable = loadState === "ready" || loadState === "stale";
   const summaryStateMessage = loadState === "ready" ? null : getStateMessage(loadState);
-  const requestedAmountText = snapshotAvailable ? "NO RECORD" : "UNAVAILABLE";
+  const evidenceReportsText = viewModel ? String(viewModel.evidence.count) : snapshotAvailable ? "NO RECORD" : "UNAVAILABLE";
   const decisionAmountText =
     viewModel?.decision.record?.authorisedAmount === null || viewModel?.decision.record?.authorisedAmount === undefined
       ? snapshotAvailable
@@ -693,10 +693,10 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 textTransform: "uppercase",
               }}
             >
-              REQUESTED AMOUNT
+              EVIDENCE REPORTS
             </span>
             <div style={{ fontSize: "28px", fontWeight: 300, color: "var(--forest)", marginTop: 2 }}>
-              {requestedAmountText}
+              {evidenceReportsText}
             </div>
           </div>
 

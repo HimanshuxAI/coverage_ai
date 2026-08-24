@@ -50,7 +50,7 @@ Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx
 | Aggregate refresh button | Re-read aggregate snapshot | Same page via `GET /api/cases/[caseId]` | Aggregate API | Labels: `REFRESH AGGREGATE`, `RETRY AGGREGATE FETCH`, `REFRESHING AGGREGATE...` |
 | Primary process button | Submit next workflow request | `POST /api/cases/[caseId]/process` | Current status presentation + process route contract | Only renders when `canRenderProcessAction(...)` is true |
 | Top-level error banner | Status only | None | Aggregate read / process error | Shows current error message without mutating live state |
-| Metrics strip | Read-only | None | Mixed source: requested amount is currently a load-state fallback only, while recommended benefit reads `latestDecision`, current stage reads status presentation, and case version reads `case.caseVersion` | Requested Amount, Recommended Benefit, Current Stage, Case Version |
+| Metrics strip | Read-only | None | Aggregate-backed summary strip: evidence report count reads `evidenceReports`, recommended benefit reads `latestDecision`, current stage reads status presentation, and case version reads `case.caseVersion` | Evidence Reports, Recommended Benefit, Current Stage, Case Version |
 | Canonical state panel | Read-only | None | Aggregate case DTO | Member, Policy, Clinical, Provider, Case Timing, Evidence Provenance cards |
 | Decision basis panel | Read-only | None | `latestDecision`, `resolutionGraph`, `pendingApproval` | Shows persisted decision, support factors, and governance state |
 | `LIVE UPDATE INTERRUPTED` banner | Status only | None | Poll controller state | Appears when a background aggregate refresh fails but last good snapshot is retained |
@@ -58,7 +58,7 @@ Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx
 | Inspector `CLOSE` button | Close inspector | Same page | Selected workflow-run state | Also closable via Escape key |
 | Inspector copy buttons | Copy run identifiers | Clipboard | Selected workflow-run inspector | Safe fields only: local run ID, Yoxa execution ID, idempotency key |
 | Audit trail list | Read-only | None | `auditEvents` | Shows time, event type, actor |
-| Packet action link | Open packet PDF in new tab | `latestPacket.pdfUrl` | Aggregate packet DTO | Renders only when a real `pdfUrl` exists |
+| Packet action link | Open packet PDF in new tab | Sanitized `latestPacket.pdfUrl` | Aggregate packet DTO | Renders only when the stored URL parses safely as `https:` or a root-relative path |
 | Packet fallback state | Status only | None | Aggregate packet DTO | `PACKET RECORDED WITHOUT PDF`, `NO PACKET RECORD`, or aggregate load-state fallback |
 
 ## Dashboard Status Vocabulary
@@ -77,7 +77,7 @@ Verified on August 24, 2026 from `src/app/page.tsx`, `src/app/dashboard/page.tsx
 | Load state | `loading`, `ready`, `stale`, `noRecord`, `error` |
 | Case status labels | `WAITING FOR ACTIVATION`, `ACTIVATED & VALIDATED`, `RESOLVING EVIDENCE`, `DECISION READY`, `HUMAN REVIEW REQUIRED`, `HUMAN AMBIGUITY`, `AUTHORISED`, `CLARIFICATION REQUESTED`, `DECLINED / REDUCED`, `DISCHARGE PENDING`, `SETTLEMENT PENDING`, `APPEAL OPEN`, `ATTENTION REQUIRED` |
 | Next-action labels | `START INTAKE`, `RUN PRE-AUTH`, `RE-EVALUATE CASE`, `GENERATE DECISION PACKET`, `OPEN YOXA REVIEW`, `PROCESS DISCHARGE`, `SUBMIT CLARIFICATION`, `FILE APPEAL`, `SETTLE BILL`, `RESOLVE APPEAL`, `RETRY WORKFLOW` |
-| Packet truth | `OPEN PACKET PDF` when `pdfUrl` exists; otherwise no packet action |
+| Packet truth | `OPEN PACKET PDF` when `pdfUrl` is safely renderable; otherwise no packet action |
 
 ## Out Of Scope
 

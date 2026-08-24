@@ -551,6 +551,30 @@ function appendSafeCopyField(
   }
 }
 
+function getSafePacketPdfHref(pdfUrl: string): string | null {
+  const trimmedPdfUrl = pdfUrl.trim();
+
+  if (trimmedPdfUrl.length === 0) {
+    return null;
+  }
+
+  if (trimmedPdfUrl.startsWith("/") && !trimmedPdfUrl.startsWith("//")) {
+    try {
+      const parsedRelativeUrl = new URL(trimmedPdfUrl, "https://command-center.local");
+      return `${parsedRelativeUrl.pathname}${parsedRelativeUrl.search}${parsedRelativeUrl.hash}`;
+    } catch {
+      return null;
+    }
+  }
+
+  try {
+    const parsedAbsoluteUrl = new URL(trimmedPdfUrl);
+    return parsedAbsoluteUrl.protocol === "https:" ? parsedAbsoluteUrl.href : null;
+  } catch {
+    return null;
+  }
+}
+
 export function getCommandCenterPacketAction(
   packetRecord: CaseAggregate["latestPacket"]
 ): CommandCenterPacketAction | null {
@@ -558,9 +582,14 @@ export function getCommandCenterPacketAction(
     return null;
   }
 
+  const safePacketPdfHref = getSafePacketPdfHref(packetRecord.pdfUrl);
+  if (!safePacketPdfHref) {
+    return null;
+  }
+
   return {
     kind: "open",
-    href: packetRecord.pdfUrl,
+    href: safePacketPdfHref,
     label: "OPEN PACKET PDF",
   };
 }

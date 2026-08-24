@@ -954,6 +954,49 @@ describe("getCommandCenterPacketAction", () => {
     });
   });
 
+  it("returns an open action for a root-relative packet PDF URL", () => {
+    const aggregate = buildAggregate({
+      latestPacket: {
+        id: "packet-row-1",
+        packetId: "packet-1",
+        caseId: "CASE-CT-REAL-001",
+        caseVersion: 7,
+        graphVersion: 3,
+        generatedAt: "2026-08-24T10:53:00.000Z",
+        pdfUrl: "/packets/packet-1.pdf",
+      },
+    });
+
+    expect(getCommandCenterPacketAction(aggregate.latestPacket)).toEqual({
+      kind: "open",
+      href: "/packets/packet-1.pdf",
+      label: "OPEN PACKET PDF",
+    });
+  });
+
+  it("returns no packet action for unsafe or invalid packet PDF URLs", () => {
+    for (const pdfUrl of [
+      "javascript:alert('owned')",
+      "data:text/html;base64,PHNjcmlwdD5hbGVydCgxKTwvc2NyaXB0Pg==",
+      "ftp://example.com/packet.pdf",
+      "not a valid url",
+    ]) {
+      const aggregate = buildAggregate({
+        latestPacket: {
+          id: "packet-row-1",
+          packetId: "packet-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          generatedAt: "2026-08-24T10:53:00.000Z",
+          pdfUrl,
+        },
+      });
+
+      expect(getCommandCenterPacketAction(aggregate.latestPacket)).toBeNull();
+    }
+  });
+
   it("returns no packet action when a persisted packet exists without a pdf URL", () => {
     const aggregate = buildAggregate({
       latestPacket: {
