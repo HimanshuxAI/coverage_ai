@@ -390,7 +390,11 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const showProcessAction =
     caseData !== null &&
     statusPresentation !== null &&
-    canRenderProcessAction(statusPresentation.nextActionLabel, statusPresentation.targetWorkflowKey);
+    canRenderProcessAction(
+      statusPresentation.nextActionLabel,
+      statusPresentation.targetWorkflowKey,
+      caseData.workflowRuns
+    );
   const safeCopyFields = viewModel
     ? getCommandCenterSafeCopyFields(viewModel.caseRecord, selectedWorkflowRun)
     : [{ key: "caseId", label: "Case ID", value: caseId } satisfies CommandCenterCopyField];

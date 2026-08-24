@@ -157,6 +157,48 @@ describe("canRenderProcessAction", () => {
 
     expect(canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey)).toBe(true);
   });
+
+  it.each(["TRIGGERING", "RUNNING", "WAITING_FOR_HUMAN"] as const)(
+    "returns false when the target workflow already has an active %s run",
+    (status) => {
+      const presentation = getStatusPresentation("AUTHORISED_BY_HUMAN");
+
+      expect(
+        canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey, [
+          {
+            workflowKey: "discharge",
+            status,
+          },
+        ])
+      ).toBe(false);
+    }
+  );
+
+  it("returns true when existing active runs belong to a different workflow", () => {
+    const presentation = getStatusPresentation("AUTHORISED_BY_HUMAN");
+
+    expect(
+      canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey, [
+        {
+          workflowKey: "appeal",
+          status: "RUNNING",
+        },
+      ])
+    ).toBe(true);
+  });
+
+  it("returns true when the target workflow only has terminal prior runs", () => {
+    const presentation = getStatusPresentation("AUTHORISED_BY_HUMAN");
+
+    expect(
+      canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey, [
+        {
+          workflowKey: "discharge",
+          status: "COMPLETED",
+        },
+      ])
+    ).toBe(true);
+  });
 });
 
 describe("getWorkflowDefinition", () => {

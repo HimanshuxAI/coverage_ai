@@ -1,4 +1,4 @@
-import { YOXA_WORKFLOW_KEYS, type YoxaWorkflowKey } from "./types";
+import { YOXA_WORKFLOW_KEYS, type WorkflowRunStatus, type YoxaWorkflowKey } from "./types";
 
 interface InvalidWorkflowKeyError {
   code: "INVALID_WORKFLOW_KEY";
@@ -16,6 +16,12 @@ export type ProcessRequestParseResult =
     };
 
 const canonicalWorkflowKeys = new Set<YoxaWorkflowKey>(YOXA_WORKFLOW_KEYS);
+const activeWorkflowRunStatuses = new Set<WorkflowRunStatus>(["TRIGGERING", "RUNNING", "WAITING_FOR_HUMAN"]);
+
+interface ProcessActionWorkflowRun {
+  workflowKey: string;
+  status: WorkflowRunStatus;
+}
 
 function isWorkflowKey(value: unknown): value is YoxaWorkflowKey {
   return typeof value === "string" && canonicalWorkflowKeys.has(value as YoxaWorkflowKey);
@@ -50,9 +56,16 @@ export function parseProcessRequest(body: unknown): ProcessRequestParseResult {
 
 export function canRenderProcessAction(
   nextActionLabel: string | null,
-  workflowKey: YoxaWorkflowKey | null
+  workflowKey: YoxaWorkflowKey | null,
+  workflowRuns: readonly ProcessActionWorkflowRun[] = []
 ): boolean {
-  return typeof nextActionLabel === "string" && nextActionLabel.length > 0 && isWorkflowKey(workflowKey);
+  if (typeof nextActionLabel !== "string" || nextActionLabel.length === 0 || !isWorkflowKey(workflowKey)) {
+    return false;
+  }
+
+  return !workflowRuns.some(
+    (workflowRun) => workflowRun.workflowKey === workflowKey && activeWorkflowRunStatuses.has(workflowRun.status)
+  );
 }
 
 export function buildProcessRequestBody(workflowKey: YoxaWorkflowKey): { workflowKey: YoxaWorkflowKey } {
