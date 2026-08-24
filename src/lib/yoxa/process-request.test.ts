@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
 
+import { getStatusPresentation } from "@/lib/workflow/presentation";
 import type { YoxaWorkflowKey } from "@/lib/yoxa/types";
 
-import { buildProcessRequestBody, parseProcessRequest } from "./process-request";
+import {
+  buildProcessRequestBody,
+  canRenderProcessAction,
+  parseProcessRequest,
+} from "./process-request";
 
 const canonicalWorkflowKeys = [
   "intake",
@@ -37,6 +42,21 @@ describe("parseProcessRequest", () => {
     expect(result.error.message).toContain("workflowKey");
   });
 
+  it("rejects a malformed request body", () => {
+    const result = parseProcessRequest("preauth");
+
+    if (result.ok) {
+      throw new Error("Expected parseProcessRequest to reject a malformed body");
+    }
+
+    expect(result).toMatchObject({
+      ok: false,
+      error: {
+        code: "INVALID_WORKFLOW_KEY",
+      },
+    });
+  });
+
   it("rejects an invalid workflow key", () => {
     const result = parseProcessRequest({ workflowKey: "RUN PRE-AUTH" });
 
@@ -59,5 +79,35 @@ describe("buildProcessRequestBody", () => {
     expect(buildProcessRequestBody(workflowKey)).toEqual({
       workflowKey,
     });
+  });
+
+  it("builds the exact preauth request body for activated and validated cases", () => {
+    const presentation = getStatusPresentation("ACTIVATED_VALIDATED");
+
+    expect(buildProcessRequestBody(presentation.targetWorkflowKey!)).toEqual({
+      workflowKey: "preauth",
+    });
+  });
+
+  it("builds the exact discharge request body for authorised cases", () => {
+    const presentation = getStatusPresentation("AUTHORISED_BY_HUMAN");
+
+    expect(buildProcessRequestBody(presentation.targetWorkflowKey!)).toEqual({
+      workflowKey: "discharge",
+    });
+  });
+});
+
+describe("canRenderProcessAction", () => {
+  it("returns false when a status has a label but no canonical workflow key", () => {
+    const presentation = getStatusPresentation("HUMAN_REVIEW_REQUIRED");
+
+    expect(canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey)).toBe(false);
+  });
+
+  it("returns true when a status has both a label and canonical workflow key", () => {
+    const presentation = getStatusPresentation("ACTIVATED_VALIDATED");
+
+    expect(canRenderProcessAction(presentation.nextActionLabel, presentation.targetWorkflowKey)).toBe(true);
   });
 });

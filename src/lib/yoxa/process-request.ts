@@ -51,6 +51,13 @@ export function parseProcessRequest(body: unknown): ProcessRequestParseResult {
   };
 }
 
+export function canRenderProcessAction(
+  nextActionLabel: string | null,
+  workflowKey: YoxaWorkflowKey | null
+): boolean {
+  return typeof nextActionLabel === "string" && nextActionLabel.length > 0 && isWorkflowKey(workflowKey);
+}
+
 export function buildProcessRequestBody(workflowKey: YoxaWorkflowKey): { workflowKey: YoxaWorkflowKey } {
   return { workflowKey };
 }

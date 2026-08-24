@@ -3,8 +3,20 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { getStatusPresentation, demoPresentationData } from "@/lib/workflow/presentation";
-import { buildProcessRequestBody } from "@/lib/yoxa/process-request";
+import { buildProcessRequestBody, canRenderProcessAction } from "@/lib/yoxa/process-request";
 import styles from "@/components/landing/landing.module.css";
+
+interface WorkflowRunSummary {
+  id?: string;
+  workflow_name?: string;
+  workflow_key?: string;
+  yoxa_workflow_run_id?: string;
+  execution_state?: string;
+}
+
+interface DecisionPacketSummary {
+  packet_id?: string;
+}
 
 interface CaseDetailResponse {
   success?: boolean;
@@ -13,9 +25,22 @@ interface CaseDetailResponse {
   planned_procedure: string;
   current_case_status: string;
   case_version: number;
-  workflow_runs?: any[];
-  audit_events?: any[];
-  decision_packet?: any;
+  workflow_runs?: WorkflowRunSummary[];
+  audit_events?: unknown[];
+  decision_packet?: DecisionPacketSummary | null;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : "Unexpected error";
+}
+
+async function fetchCaseDetailResponse(caseId: string): Promise<CaseDetailResponse> {
+  const res = await fetch(`/api/cases/${caseId}`);
+  if (!res.ok) {
+    throw new Error(`Failed to load case data: ${res.statusText}`);
+  }
+
+  return (await res.json()) as CaseDetailResponse;
 }
 
 export default function CaseCommandCenterPage({ params }: { params: Promise<{ caseId: string }> }) {
@@ -26,29 +51,51 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [selectedWorkflowRun, setSelectedWorkflowRun] = useState<any | null>(null);
+  const [selectedWorkflowRun, setSelectedWorkflowRun] = useState<WorkflowRunSummary | null>(null);
 
-  useEffect(() => {
-    fetchCaseDetails();
-  }, [caseId]);
-
-  const fetchCaseDetails = async () => {
+  const refreshCaseDetails = async () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`/api/cases/${caseId}`);
-      if (!res.ok) {
-        throw new Error(`Failed to load case data: ${res.statusText}`);
-      }
-      const data = await res.json();
-      setCaseData(data);
-    } catch (err: any) {
+      setCaseData(await fetchCaseDetailResponse(caseId));
+    } catch (err: unknown) {
       console.error("Error fetching case details:", err);
-      setError(err.message || "Failed to fetch case details");
+      setError(getErrorMessage(err));
     } finally {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    let isCurrent = true;
+
+    const loadCaseDetails = async () => {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const nextCaseData = await fetchCaseDetailResponse(caseId);
+        if (isCurrent) {
+          setCaseData(nextCaseData);
+        }
+      } catch (err: unknown) {
+        console.error("Error fetching case details:", err);
+        if (isCurrent) {
+          setError(getErrorMessage(err));
+        }
+      } finally {
+        if (isCurrent) {
+          setLoading(false);
+        }
+      }
+    };
+
+    void loadCaseDetails();
+
+    return () => {
+      isCurrent = false;
+    };
+  }, [caseId]);
 
   const handleProcessCase = async () => {
     if (processing || !caseData) return;
@@ -73,17 +120,17 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
       // Refresh case details after processing request
       setTimeout(() => {
-        fetchCaseDetails();
+        void refreshCaseDetails();
       }, 1200);
-
-    } catch (err: any) {
-      alert(`Process Case Error: ${err.message}`);
+    } catch (err: unknown) {
+      alert(`Process Case Error: ${getErrorMessage(err)}`);
     } finally {
       setProcessing(false);
     }
   };
 
   const pres = getStatusPresentation(caseData?.current_case_status || "DECISION_READY");
+  const showProcessAction = canRenderProcessAction(pres.nextActionLabel, pres.targetWorkflowKey);
 
   return (
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
@@ -134,18 +181,40 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
             </div>
 
             {/* ACTION BAR */}
-            {pres.nextActionLabel && (
+            {showProcessAction && (
               <button
                 onClick={handleProcessCase}
                 disabled={processing}
                 className={styles.btnPrimary}
                 style={{ opacity: processing ? 0.6 : 1, cursor: processing ? "not-allowed" : "pointer" }}
               >
-                {processing ? "PROCESSING 202 QUEUED..." : `${pres.nextActionLabel} →`}
+                {processing ? "PROCESSING 202 QUEUED..." : `${pres.nextActionLabel!} →`}
               </button>
             )}
           </div>
         </div>
+
+        {loading && !caseData && (
+          <div style={{ marginBottom: 24, color: "var(--muted)", fontSize: "13px" }}>
+            Loading case details...
+          </div>
+        )}
+
+        {error && (
+          <div
+            style={{
+              marginBottom: 24,
+              padding: "12px 16px",
+              border: "1px solid #D94A4A",
+              background: "#FFF2F2",
+              color: "#8E1F1F",
+              fontSize: "13px",
+              fontWeight: 600,
+            }}
+          >
+            {error}
+          </div>
+        )}
 
         {/* B2 — EXECUTIVE SUMMARY STRIP */}
         <div style={{
