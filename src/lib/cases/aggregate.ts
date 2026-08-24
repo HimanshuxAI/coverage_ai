@@ -154,7 +154,7 @@ export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<
         caseVersion: latestPacketRow.case_version,
         graphVersion: latestPacketRow.graph_version,
         generatedAt: latestPacketRow.generated_at,
-        pdfUrl: latestPacketRow.pdf_url,
+        pdfUrl: latestPacketRow.pdf_url ?? null,
       }
     : null;
 

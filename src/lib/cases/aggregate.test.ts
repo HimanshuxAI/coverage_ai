@@ -178,6 +178,15 @@ const nullablePacketRow = {
   pdf_url: null,
 } satisfies DecisionPacketRow;
 
+const missingPdfPacketRow = {
+  id: "packet-row-2",
+  packet_id: "packet-2",
+  case_id: "CASE-CT-REAL-001",
+  case_version: 7,
+  graph_version: 4,
+  generated_at: "2026-08-24T10:54:00.000Z",
+} satisfies DecisionPacketRow;
+
 const auditEventRow = {
   id: "audit-row-1",
   audit_event_id: "audit-1",
@@ -422,6 +431,28 @@ describe("buildCaseAggregate", () => {
     });
     expect(result.data.latestPacket).toMatchObject({
       packetId: "packet-1",
+      pdfUrl: null,
+    });
+  });
+
+  it("normalizes a packet row without pdf_url to an explicit null pdfUrl field", () => {
+    const result = buildCaseAggregate({
+      caseRecord: caseRow,
+      workflowRuns: { data: [], error: null },
+      evidenceReports: { data: [], error: null },
+      resolutionGraphs: { data: [], error: null },
+      humanDecisions: { data: [], error: null },
+      decisionPackets: { data: [missingPdfPacketRow], error: null },
+      auditEvents: { data: [], error: null },
+    });
+
+    expect(result.data.latestPacket).toEqual({
+      id: "packet-row-2",
+      packetId: "packet-2",
+      caseId: "CASE-CT-REAL-001",
+      caseVersion: 7,
+      graphVersion: 4,
+      generatedAt: "2026-08-24T10:54:00.000Z",
       pdfUrl: null,
     });
   });

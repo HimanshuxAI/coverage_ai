@@ -65,7 +65,7 @@ export interface DecisionPacketRow {
   case_version: number;
   graph_version: number;
   generated_at: string;
-  pdf_url: string | null;
+  pdf_url?: string | null;
 }
 
 export interface CaseDto {

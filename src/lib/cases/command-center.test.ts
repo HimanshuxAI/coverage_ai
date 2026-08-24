@@ -180,6 +180,41 @@ describe("unwrapCaseAggregateEnvelope", () => {
       { source: "resolutionGraphs", code: "READ_FAILED" },
     ]);
   });
+
+  it("accepts an explicit null latestPacket.pdfUrl but rejects a missing pdfUrl field", () => {
+    const aggregate = buildAggregate({
+      latestPacket: {
+        id: "packet-row-1",
+        packetId: "packet-1",
+        caseId: "CASE-CT-REAL-001",
+        caseVersion: 7,
+        graphVersion: 3,
+        generatedAt: "2026-08-24T10:53:00.000Z",
+        pdfUrl: null,
+      },
+    });
+    const validEnvelope = {
+      success: true,
+      data: aggregate,
+    } satisfies ApiEnvelope<CaseAggregate>;
+    const malformedEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        latestPacket: {
+          id: "packet-row-1",
+          packetId: "packet-1",
+          caseId: "CASE-CT-REAL-001",
+          caseVersion: 7,
+          graphVersion: 3,
+          generatedAt: "2026-08-24T10:53:00.000Z",
+        },
+      },
+    };
+
+    expect(unwrapCaseAggregateEnvelope(validEnvelope)?.latestPacket?.pdfUrl).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(malformedEnvelope)).toBeNull();
+  });
 });
 
 describe("resolveCaseAggregateSnapshot", () => {
