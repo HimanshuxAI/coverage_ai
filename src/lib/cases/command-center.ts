@@ -1,4 +1,12 @@
 import { getStatusPresentation, type StatusPresentation } from "@/lib/workflow/presentation";
+import {
+  getWorkflowStatusPresentation,
+  isWorkflowRunStatus,
+  shouldPollWorkflowRuns,
+  type WorkflowStatusPresentation,
+  type WorkflowStatusTone,
+} from "@/lib/yoxa/status-presentation";
+import type { WorkflowRunStatus } from "@/lib/yoxa/types";
 
 import type { ApiEnvelope, CaseAggregate } from "./contracts";
 import type { ExecutionProof } from "@/lib/yoxa/execution-proof";
@@ -23,7 +31,9 @@ export interface CommandCenterViewModel {
     factors: string[];
   };
   workflow: {
-    runs: CaseAggregate["workflowRuns"];
+    runs: CommandCenterWorkflowRunViewModel[];
+    shouldPoll: boolean;
+    activity: CommandCenterWorkflowActivityItem[];
   };
   audit: {
     events: CaseAggregate["auditEvents"];
@@ -38,6 +48,48 @@ export interface CommandCenterViewModel {
     record: CaseAggregate["resolutionGraph"];
     availability: "available" | "noRecord" | "unavailable";
   };
+}
+
+export interface CommandCenterProofStripItem {
+  label: string;
+  value: string;
+  tone: WorkflowStatusTone;
+}
+
+export interface CommandCenterWorkflowRunInspector {
+  workflowName: string;
+  workflowKey: string;
+  statusLabel: string;
+  proofStateLabel: string;
+  localRunId: string;
+  yoxaExecutionId: string;
+  idempotencyKey: string;
+  attempt: string;
+  queuedAt: string;
+  dispatchedAt: string;
+  startedAt: string;
+  completedAt: string;
+  failedAt: string;
+  createdAt: string;
+  updatedAt: string;
+  upstreamStatusCode: string;
+  acceptedResponse: string;
+  terminalState: string;
+}
+
+export interface CommandCenterWorkflowRunViewModel
+  extends Omit<CaseAggregate["workflowRuns"][number], "status"> {
+  status: WorkflowRunStatus;
+  statusPresentation: WorkflowStatusPresentation;
+  proofStrip: CommandCenterProofStripItem[];
+  inspector: CommandCenterWorkflowRunInspector;
+}
+
+export interface CommandCenterWorkflowActivityItem {
+  id: string;
+  eventType: string;
+  recordedAt: string;
+  actor: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -102,7 +154,7 @@ function isWorkflowRunDto(value: unknown): value is CaseAggregate["workflowRuns"
     isString(value.workflowName) &&
     isNullableString(value.yoxaExecutionId) &&
     isString(value.idempotencyKey) &&
-    isString(value.status) &&
+    isWorkflowRunStatus(value.status) &&
     typeof value.attempt === "number" &&
     isNullableRecord(value.inputPayload) &&
     isNullableRecord(value.rawResponse) &&
@@ -150,7 +202,7 @@ function isExecutionProof(value: unknown): value is ExecutionProof {
       typeof value.acceptedResponse.upstreamStatusCode === "number") &&
     isNullableString(value.acceptedResponse.yoxaExecutionId) &&
     isRecord(value.currentRun) &&
-    isString(value.currentRun.status) &&
+    isWorkflowRunStatus(value.currentRun.status) &&
     isBoolean(value.currentRun.terminal) &&
     isNullableString(value.currentRun.startedAt) &&
     isNullableString(value.currentRun.completedAt) &&
@@ -345,6 +397,7 @@ export function resolveCaseAggregateSnapshot(input: {
 }
 
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"] as const;
+const NOT_RECORDED = "NOT RECORDED";
 
 export function formatCalendarDate(value: string | null): string {
   if (!value) {
@@ -371,6 +424,93 @@ export function getCommandCenterStatusPresentation(aggregate: CaseAggregate): St
     : null);
 }
 
+function formatExecutionProofStateLabel(state: ExecutionProof["state"]): string {
+  return state.toUpperCase().replace(/-/g, " ");
+}
+
+function formatAcceptedResponseValue(proof: ExecutionProof): string {
+  if (!proof.acceptedResponse.accepted) {
+    return "NOT ACCEPTED";
+  }
+
+  return proof.acceptedResponse.upstreamStatusCode === null
+    ? "ACCEPTED"
+    : `${proof.acceptedResponse.upstreamStatusCode} ACCEPTED`;
+}
+
+function buildWorkflowProofStrip(
+  proof: ExecutionProof,
+  statusPresentation: WorkflowStatusPresentation
+): CommandCenterProofStripItem[] {
+  return [
+    {
+      label: "DURABLE RUN",
+      value: "RECORDED",
+      tone: "green",
+    },
+    {
+      label: "REQUEST SENT",
+      value: proof.requestDispatch.dispatched ? "DISPATCHED" : NOT_RECORDED,
+      tone: proof.requestDispatch.dispatched ? "green" : "muted",
+    },
+    {
+      label: "YOXA ACCEPTANCE",
+      value: formatAcceptedResponseValue(proof),
+      tone: proof.acceptedResponse.accepted ? "green" : "muted",
+    },
+    {
+      label: "CURRENT RUN",
+      value: statusPresentation.label,
+      tone: statusPresentation.tone,
+    },
+  ];
+}
+
+function buildWorkflowInspector(
+  run: CaseAggregate["workflowRuns"][number],
+  statusPresentation: WorkflowStatusPresentation
+): CommandCenterWorkflowRunInspector {
+  return {
+    workflowName: run.workflowName,
+    workflowKey: run.workflowKey,
+    statusLabel: statusPresentation.label,
+    proofStateLabel: formatExecutionProofStateLabel(run.executionProof.state),
+    localRunId: run.id,
+    yoxaExecutionId:
+      run.yoxaExecutionId ?? run.executionProof.acceptedResponse.yoxaExecutionId ?? NOT_RECORDED,
+    idempotencyKey: run.idempotencyKey,
+    attempt: String(run.attempt),
+    queuedAt: run.queuedAt ?? NOT_RECORDED,
+    dispatchedAt: run.executionProof.requestDispatch.dispatchedAt ?? NOT_RECORDED,
+    startedAt: run.startedAt ?? NOT_RECORDED,
+    completedAt: run.completedAt ?? NOT_RECORDED,
+    failedAt: run.failedAt ?? NOT_RECORDED,
+    createdAt: run.createdAt,
+    updatedAt: run.updatedAt,
+    upstreamStatusCode:
+      run.executionProof.acceptedResponse.upstreamStatusCode === null
+        ? NOT_RECORDED
+        : String(run.executionProof.acceptedResponse.upstreamStatusCode),
+    acceptedResponse: formatAcceptedResponseValue(run.executionProof),
+    terminalState: run.executionProof.currentRun.terminal ? "TERMINAL" : "ACTIVE",
+  };
+}
+
+function buildWorkflowRunViewModel(
+  run: CaseAggregate["workflowRuns"][number]
+): CommandCenterWorkflowRunViewModel {
+  const status = run.status as WorkflowRunStatus;
+  const statusPresentation = getWorkflowStatusPresentation(status);
+
+  return {
+    ...run,
+    status,
+    statusPresentation,
+    proofStrip: buildWorkflowProofStrip(run.executionProof, statusPresentation),
+    inspector: buildWorkflowInspector(run, statusPresentation),
+  };
+}
+
 export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCenterViewModel {
   const factors: string[] = [];
   const resolutionGraphAvailability = aggregate.resolutionGraph
@@ -395,6 +535,8 @@ export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCe
     factors.push(`Evidence status: ${report.agentName} — ${report.reportStatus}`);
   }
 
+  const workflowRuns = aggregate.workflowRuns.map(buildWorkflowRunViewModel);
+
   return {
     caseRecord: aggregate.case,
     status: aggregate.status,
@@ -408,7 +550,14 @@ export function buildCommandCenterViewModel(aggregate: CaseAggregate): CommandCe
       factors,
     },
     workflow: {
-      runs: aggregate.workflowRuns,
+      runs: workflowRuns,
+      shouldPoll: shouldPollWorkflowRuns(workflowRuns),
+      activity: aggregate.auditEvents.map((auditEvent) => ({
+        id: auditEvent.id,
+        eventType: auditEvent.eventType,
+        recordedAt: auditEvent.createdAt,
+        actor: auditEvent.agentRunId ?? "SYSTEM",
+      })),
     },
     audit: {
       events: aggregate.auditEvents,

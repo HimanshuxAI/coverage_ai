@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react";
 import Link from "next/link";
 
-import type { CaseAggregate, WorkflowRunDto } from "@/lib/cases/contracts";
+import type { CaseAggregate } from "@/lib/cases/contracts";
 import {
   buildCommandCenterViewModel,
   type CommandCenterLoadState,
@@ -13,6 +13,7 @@ import {
   unwrapCaseAggregateEnvelope,
 } from "@/lib/cases/command-center";
 import { buildProcessRequestBody, canRenderProcessAction } from "@/lib/yoxa/process-request";
+import { type WorkflowStatusTone } from "@/lib/yoxa/status-presentation";
 import styles from "@/components/landing/landing.module.css";
 
 const dateTimeFormatter = new Intl.DateTimeFormat("en-IN", {
@@ -78,20 +79,19 @@ function formatDecisionHeadline(decision: CaseAggregate["latestDecision"]): stri
   }
 }
 
-function getWorkflowStatusColor(status: string): string {
-  if (/(FAIL|ERROR|DECLINED)/i.test(status)) {
-    return "#D94A4A";
+function getWorkflowToneColor(tone: WorkflowStatusTone): string {
+  switch (tone) {
+    case "green":
+      return "#20C878";
+    case "forest":
+      return "var(--forest)";
+    case "amber":
+      return "#D99A2B";
+    case "red":
+      return "#D94A4A";
+    case "muted":
+      return "var(--muted)";
   }
-
-  if (/(COMPLETE|SUCCESS|AUTHORISED|RESOLVED)/i.test(status)) {
-    return "var(--forest)";
-  }
-
-  if (/(WAITING|PENDING|HUMAN)/i.test(status)) {
-    return "#D99A2B";
-  }
-
-  return "var(--muted)";
 }
 
 function getStatusBadge(loadState: CommandCenterLoadState, caseData: CaseAggregate | null) {
@@ -199,7 +199,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const [loadState, setLoadState] = useState<CommandCenterLoadState>("loading");
   const [error, setError] = useState<string | null>(null);
   const [processing, setProcessing] = useState(false);
-  const [selectedWorkflowRun, setSelectedWorkflowRun] = useState<WorkflowRunDto | null>(null);
+  const [selectedWorkflowRunId, setSelectedWorkflowRunId] = useState<string | null>(null);
 
   async function refreshCaseDetails(options?: { showLoading?: boolean }) {
     const shouldShowLoading = options?.showLoading ?? caseData === null;
@@ -216,9 +216,11 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
         nextData: nextCaseData,
       });
       setCaseData(nextSnapshot.caseData);
-      setSelectedWorkflowRun((current) =>
+      setSelectedWorkflowRunId((current) =>
         current && nextSnapshot.caseData
-          ? nextSnapshot.caseData.workflowRuns.find((workflowRun) => workflowRun.id === current.id) ?? null
+          ? nextSnapshot.caseData.workflowRuns.some((workflowRun) => workflowRun.id === current)
+            ? current
+            : null
           : null
       );
       setLoadState(nextSnapshot.loadState);
@@ -236,7 +238,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
       });
       setCaseData(nextSnapshot.caseData);
       if (nextSnapshot.caseData === null) {
-        setSelectedWorkflowRun(null);
+        setSelectedWorkflowRunId(null);
       }
       setLoadState(nextSnapshot.loadState);
       setError(nextSnapshot.error);
@@ -261,7 +263,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           nextData: nextCaseData,
         });
         setCaseData(nextSnapshot.caseData);
-        setSelectedWorkflowRun(null);
+        setSelectedWorkflowRunId(null);
         setLoadState(nextSnapshot.loadState);
       } catch (requestError: unknown) {
         if (!active) {
@@ -280,7 +282,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           },
         });
         setCaseData(nextSnapshot.caseData);
-        setSelectedWorkflowRun(null);
+        setSelectedWorkflowRunId(null);
         setError(nextSnapshot.error);
         setLoadState(nextSnapshot.loadState);
       }
@@ -296,6 +298,10 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
   const viewModel = caseData ? buildCommandCenterViewModel(caseData) : null;
   const statusBadge = getStatusBadge(loadState, caseData);
   const statusPresentation = caseData ? getCommandCenterStatusPresentation(caseData) : null;
+  const selectedWorkflowRun =
+    selectedWorkflowRunId && viewModel
+      ? viewModel.workflow.runs.find((workflowRun) => workflowRun.id === selectedWorkflowRunId) ?? null
+      : null;
   const showProcessAction =
     caseData !== null &&
     statusPresentation !== null &&
@@ -440,7 +446,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 className={styles.btnPrimary}
                 style={{ opacity: processing ? 0.6 : 1, cursor: processing ? "not-allowed" : "pointer" }}
               >
-                {processing ? "PROCESSING 202 QUEUED..." : `${statusPresentation.nextActionLabel!} →`}
+                {processing ? "SUBMITTING REQUEST..." : `${statusPresentation.nextActionLabel!} →`}
               </button>
             )}
           </div>
@@ -790,13 +796,13 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
           {viewModel && viewModel.workflow.runs.length > 0 ? (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>
-              {viewModel.workflow.runs.map((workflowRun, index) => (
-                <div
-                  key={workflowRun.id}
-                  onClick={() => setSelectedWorkflowRun(workflowRun)}
-                  style={{
-                    background: "var(--bg)",
-                    border: "1px solid var(--grid)",
+                  {viewModel.workflow.runs.map((workflowRun, index) => (
+                    <div
+                      key={workflowRun.id}
+                      onClick={() => setSelectedWorkflowRunId(workflowRun.id)}
+                      style={{
+                        background: "var(--bg)",
+                        border: "1px solid var(--grid)",
                     padding: 16,
                     cursor: "pointer",
                     transition: "border-color 0.15s ease",
@@ -821,13 +827,33 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                     style={{
                       fontSize: "10px",
                       fontWeight: 800,
-                      color: getWorkflowStatusColor(workflowRun.status),
+                      color: getWorkflowToneColor(workflowRun.statusPresentation.tone),
                     }}
                   >
-                    ● {formatStatusLabel(workflowRun.status)}
+                    ● {workflowRun.statusPresentation.label}
                   </span>
                   <div style={{ fontSize: "11px", color: "var(--muted)", marginTop: 6 }}>
                     Updated {formatDateTime(workflowRun.updatedAt)}
+                  </div>
+                  <div style={{ display: "grid", gap: 6, marginTop: 12 }}>
+                    {workflowRun.proofStrip.map((proofItem) => (
+                      <div
+                        key={`${workflowRun.id}-${proofItem.label}`}
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 12,
+                          fontSize: "10px",
+                          fontWeight: 700,
+                          color: getWorkflowToneColor(proofItem.tone),
+                          borderTop: "1px solid var(--grid)",
+                          paddingTop: 6,
+                        }}
+                      >
+                        <span>{proofItem.label}</span>
+                        <span>{proofItem.value}</span>
+                      </div>
+                    ))}
                   </div>
                 </div>
               ))}
@@ -845,7 +871,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   TECHNICAL WORKFLOW RUN INSPECTION
                 </span>
                 <button
-                  onClick={() => setSelectedWorkflowRun(null)}
+                  onClick={() => setSelectedWorkflowRunId(null)}
                   style={{ background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}
                 >
                   X
@@ -853,30 +879,42 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 12, fontSize: "12px" }}>
                 <div>
-                  Workflow: <strong>{selectedWorkflowRun.workflowName}</strong>
+                  Workflow: <strong>{selectedWorkflowRun.inspector.workflowName}</strong>
                 </div>
                 <div>
-                  Workflow key: <strong>{selectedWorkflowRun.workflowKey}</strong>
+                  Workflow key: <strong>{selectedWorkflowRun.inspector.workflowKey}</strong>
                 </div>
                 <div>
-                  Status: <strong>{formatStatusLabel(selectedWorkflowRun.status)}</strong>
+                  Status: <strong>{selectedWorkflowRun.inspector.statusLabel}</strong>
                 </div>
                 <div>
-                  Local run ID: <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.id}</code>
+                  Proof state: <strong>{selectedWorkflowRun.inspector.proofStateLabel}</strong>
+                </div>
+                <div>
+                  Local run ID: <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.localRunId}</code>
                 </div>
                 <div>
                   Yoxa run ID:{" "}
-                  <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.yoxaExecutionId ?? "NOT RECORDED"}</code>
+                  <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.yoxaExecutionId}</code>
                 </div>
                 <div>
-                  Attempt: <strong>{selectedWorkflowRun.attempt}</strong>
+                  Idempotency key: <code style={{ fontSize: "11px" }}>{selectedWorkflowRun.inspector.idempotencyKey}</code>
                 </div>
-                <div>Queued: <strong>{formatDateTime(selectedWorkflowRun.queuedAt)}</strong></div>
-                <div>Started: <strong>{formatDateTime(selectedWorkflowRun.startedAt)}</strong></div>
-                <div>Completed: <strong>{formatDateTime(selectedWorkflowRun.completedAt)}</strong></div>
-                <div>Failed: <strong>{formatDateTime(selectedWorkflowRun.failedAt)}</strong></div>
-                <div>Created: <strong>{formatDateTime(selectedWorkflowRun.createdAt)}</strong></div>
-                <div>Updated: <strong>{formatDateTime(selectedWorkflowRun.updatedAt)}</strong></div>
+                <div>Attempt: <strong>{selectedWorkflowRun.inspector.attempt}</strong></div>
+                <div>Terminal state: <strong>{selectedWorkflowRun.inspector.terminalState}</strong></div>
+                <div>
+                  Accepted response: <strong>{selectedWorkflowRun.inspector.acceptedResponse}</strong>
+                </div>
+                <div>
+                  Upstream status: <strong>{selectedWorkflowRun.inspector.upstreamStatusCode}</strong>
+                </div>
+                <div>Queued: <strong>{formatDateTime(selectedWorkflowRun.inspector.queuedAt)}</strong></div>
+                <div>Dispatched: <strong>{formatDateTime(selectedWorkflowRun.inspector.dispatchedAt)}</strong></div>
+                <div>Started: <strong>{formatDateTime(selectedWorkflowRun.inspector.startedAt)}</strong></div>
+                <div>Completed: <strong>{formatDateTime(selectedWorkflowRun.inspector.completedAt)}</strong></div>
+                <div>Failed: <strong>{formatDateTime(selectedWorkflowRun.inspector.failedAt)}</strong></div>
+                <div>Created: <strong>{formatDateTime(selectedWorkflowRun.inspector.createdAt)}</strong></div>
+                <div>Updated: <strong>{formatDateTime(selectedWorkflowRun.inspector.updatedAt)}</strong></div>
               </div>
             </div>
           )}
@@ -898,10 +936,10 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
             </h3>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: "13px" }}>
-              {viewModel && viewModel.audit.events.length > 0 ? (
-                viewModel.audit.events.map((auditEvent) => (
+              {viewModel && viewModel.workflow.activity.length > 0 ? (
+                viewModel.workflow.activity.map((activityItem) => (
                   <div
-                    key={auditEvent.id}
+                    key={activityItem.id}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -911,10 +949,10 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                     }}
                   >
                     <span style={{ color: "var(--muted)" }}>
-                      {formatDateTime(auditEvent.createdAt)} • {auditEvent.eventType}
+                      {formatDateTime(activityItem.recordedAt)} • {activityItem.eventType}
                     </span>
                     <span style={{ fontWeight: 700, color: "var(--forest)" }}>
-                      {auditEvent.agentRunId ?? "SYSTEM"}
+                      {activityItem.actor}
                     </span>
                   </div>
                 ))

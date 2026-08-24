@@ -9,6 +9,81 @@ import {
   unwrapCaseAggregateEnvelope,
 } from "./command-center";
 import { buildProcessRequestBody } from "@/lib/yoxa/process-request";
+import type { WorkflowRunStatus } from "@/lib/yoxa/types";
+
+function buildWorkflowRun(
+  status: WorkflowRunStatus,
+  overrides: Partial<CaseAggregate["workflowRuns"][number]> = {}
+): CaseAggregate["workflowRuns"][number] {
+  const startedAt =
+    status === "TRIGGERING" || status === "RUNNING" || status === "WAITING_FOR_HUMAN"
+      ? "2026-08-24T10:31:00.000Z"
+      : null;
+  const completedAt = status === "COMPLETED" ? "2026-08-24T10:40:00.000Z" : null;
+  const failedAt = status === "FAILED" ? "2026-08-24T10:40:00.000Z" : null;
+
+  return {
+    id: "run-1",
+    caseId: "CASE-CT-REAL-001",
+    workflowKey: "preauth",
+    workflowName: "Pre-auth",
+    yoxaExecutionId: status === "QUEUED" ? null : "yoxa-run-1",
+    idempotencyKey: "idem-1",
+    status,
+    attempt: 1,
+    inputPayload: { workflowKey: "preauth" },
+    rawResponse: null,
+    normalizedOutput: null,
+    errorCode: null,
+    errorMessage: null,
+    queuedAt: "2026-08-24T10:30:00.000Z",
+    startedAt,
+    completedAt,
+    failedAt,
+    createdAt: "2026-08-24T10:30:00.000Z",
+    updatedAt: "2026-08-24T10:32:00.000Z",
+    executionProof: {
+      state:
+        status === "COMPLETED"
+          ? "completed"
+          : status === "FAILED"
+            ? "failed"
+            : status === "CANCELLED"
+              ? "cancelled"
+              : status === "RUNNING"
+                ? "running"
+                : status === "WAITING_FOR_HUMAN"
+                  ? "waiting-for-human"
+                  : status === "TRIGGERING"
+                    ? "triggering"
+                    : "queued",
+      durableRun: {
+        workflowRunId: "run-1",
+        idempotencyKey: "idem-1",
+        persistedAt: "2026-08-24T10:30:00.000Z",
+        queuedAt: "2026-08-24T10:30:00.000Z",
+      },
+      requestDispatch: {
+        dispatched: startedAt !== null,
+        dispatchedAt: startedAt,
+      },
+      acceptedResponse: {
+        accepted: status !== "QUEUED",
+        upstreamStatusCode: status === "QUEUED" ? null : 202,
+        yoxaExecutionId: status === "QUEUED" ? null : "yoxa-run-1",
+      },
+      currentRun: {
+        status,
+        terminal: status === "COMPLETED" || status === "FAILED" || status === "CANCELLED",
+        startedAt,
+        completedAt,
+        failedAt,
+        updatedAt: "2026-08-24T10:32:00.000Z",
+      },
+    },
+    ...overrides,
+  };
+}
 
 function buildAggregate(overrides: Partial<CaseAggregate> = {}): CaseAggregate {
   return {
@@ -664,6 +739,150 @@ describe("buildCommandCenterViewModel", () => {
 
     expect(viewModel.resolutionGraph.record).toBeNull();
     expect(viewModel.resolutionGraph.availability).toBe("unavailable");
+  });
+
+  it("keeps case state separate from persisted workflow-run state", () => {
+    const viewModel = buildCommandCenterViewModel(
+      buildAggregate({
+        status: "AUTHORISED_BY_HUMAN",
+        case: {
+          ...buildAggregate().case,
+          currentCaseStatus: "AUTHORISED_BY_HUMAN",
+        },
+        workflowRuns: [buildWorkflowRun("RUNNING")],
+      })
+    );
+
+    expect(viewModel.status).toBe("AUTHORISED_BY_HUMAN");
+    expect(viewModel.workflow.shouldPoll).toBe(true);
+    expect(viewModel.workflow.runs[0].status).toBe("RUNNING");
+    expect(viewModel.workflow.runs[0].statusPresentation).toMatchObject({
+      label: "RUNNING",
+      active: true,
+      terminal: false,
+      shouldPoll: true,
+    });
+  });
+
+  it("builds an accepted-not-completed proof strip from persisted proof only", () => {
+    const viewModel = buildCommandCenterViewModel(
+      buildAggregate({
+        workflowRuns: [
+          buildWorkflowRun("RUNNING", {
+            executionProof: {
+              state: "running",
+              durableRun: {
+                workflowRunId: "run-1",
+                idempotencyKey: "idem-1",
+                persistedAt: "2026-08-24T10:30:00.000Z",
+                queuedAt: "2026-08-24T10:30:00.000Z",
+              },
+              requestDispatch: {
+                dispatched: true,
+                dispatchedAt: "2026-08-24T10:31:00.000Z",
+              },
+              acceptedResponse: {
+                accepted: true,
+                upstreamStatusCode: 202,
+                yoxaExecutionId: "yoxa-run-1",
+              },
+              currentRun: {
+                status: "RUNNING",
+                terminal: false,
+                startedAt: "2026-08-24T10:31:00.000Z",
+                completedAt: null,
+                failedAt: null,
+                updatedAt: "2026-08-24T10:32:00.000Z",
+              },
+            },
+          }),
+        ],
+      })
+    );
+
+    expect(viewModel.workflow.runs[0].proofStrip).toEqual([
+      { label: "DURABLE RUN", value: "RECORDED", tone: "green" },
+      { label: "REQUEST SENT", value: "DISPATCHED", tone: "green" },
+      { label: "YOXA ACCEPTANCE", value: "202 ACCEPTED", tone: "green" },
+      { label: "CURRENT RUN", value: "RUNNING", tone: "forest" },
+    ]);
+  });
+
+  it("exposes full inspector fields and keeps unavailable proof data explicit", () => {
+    const viewModel = buildCommandCenterViewModel(
+      buildAggregate({
+        workflowRuns: [
+          buildWorkflowRun("QUEUED", {
+            executionProof: {
+              state: "queued",
+              durableRun: {
+                workflowRunId: "run-1",
+                idempotencyKey: "idem-1",
+                persistedAt: "2026-08-24T10:30:00.000Z",
+                queuedAt: "2026-08-24T10:30:00.000Z",
+              },
+              requestDispatch: {
+                dispatched: false,
+                dispatchedAt: null,
+              },
+              acceptedResponse: {
+                accepted: false,
+                upstreamStatusCode: null,
+                yoxaExecutionId: null,
+              },
+              currentRun: {
+                status: "QUEUED",
+                terminal: false,
+                startedAt: null,
+                completedAt: null,
+                failedAt: null,
+                updatedAt: "2026-08-24T10:32:00.000Z",
+              },
+            },
+          }),
+        ],
+        auditEvents: [
+          {
+            id: "audit-row-1",
+            auditEventId: "audit-1",
+            caseId: "CASE-CT-REAL-001",
+            caseVersion: 7,
+            eventType: "WORKFLOW_TRIGGERED_PREAUTH",
+            eventData: { workflow_key: "preauth" },
+            agentRunId: null,
+            createdAt: "2026-08-24T10:31:30.000Z",
+          },
+        ],
+      })
+    );
+
+    expect(viewModel.workflow.runs[0].inspector).toMatchObject({
+      workflowName: "Pre-auth",
+      workflowKey: "preauth",
+      statusLabel: "QUEUED",
+      proofStateLabel: "QUEUED",
+      localRunId: "run-1",
+      yoxaExecutionId: "NOT RECORDED",
+      idempotencyKey: "idem-1",
+      attempt: "1",
+      queuedAt: "2026-08-24T10:30:00.000Z",
+      dispatchedAt: "NOT RECORDED",
+      startedAt: "NOT RECORDED",
+      completedAt: "NOT RECORDED",
+      failedAt: "NOT RECORDED",
+      createdAt: "2026-08-24T10:30:00.000Z",
+      updatedAt: "2026-08-24T10:32:00.000Z",
+      upstreamStatusCode: "NOT RECORDED",
+      acceptedResponse: "NOT ACCEPTED",
+    });
+    expect(viewModel.workflow.activity).toEqual([
+      {
+        id: "audit-row-1",
+        eventType: "WORKFLOW_TRIGGERED_PREAUTH",
+        recordedAt: "2026-08-24T10:31:30.000Z",
+        actor: "SYSTEM",
+      },
+    ]);
   });
 });
 
