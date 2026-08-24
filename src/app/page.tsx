@@ -14,25 +14,13 @@ function createMiniBarStyle(width: string, background?: string): MiniBarStyle {
 }
 
 export default function LandingPage() {
-  const [, setActiveShowcaseStage] = useState(0);
   const [originProgress, setOriginProgress] = useState(0);
   const [judgementProgress, setJudgementProgress] = useState(0);
   const [activeLifecycleStep, setActiveLifecycleStep] = useState(0);
 
   useEffect(() => {
     const onScrollAll = () => {
-      // 1. Showcase Section
-      const scSec = document.getElementById("showcaseSection");
-      if (scSec) {
-        const rect = scSec.getBoundingClientRect();
-        const dist = scSec.offsetHeight - window.innerHeight;
-        if (dist > 0) {
-          const prog = Math.max(0, Math.min(1, -rect.top / dist));
-          setActiveShowcaseStage(Math.min(4, Math.floor(prog * 5.0)));
-        }
-      }
-
-      // 2. Origin Section (Born Fragmented)
+      // 1. Origin Section (Born Fragmented)
       const origSec = document.getElementById("originSection");
       if (origSec) {
         const rect = origSec.getBoundingClientRect();
@@ -43,7 +31,7 @@ export default function LandingPage() {
         }
       }
 
-      // 3. Judgement Section (AI vs Human)
+      // 2. Judgement Section (AI vs Human)
       const judgeSec = document.getElementById("judgementSection");
       if (judgeSec) {
         const rect = judgeSec.getBoundingClientRect();
@@ -54,7 +42,7 @@ export default function LandingPage() {
         }
       }
 
-      // 4. Lifecycle Section (Intake. Decide.)
+      // 3. Lifecycle Section (Intake. Decide.)
       const lifeSec = document.getElementById("lifecycleSection");
       if (lifeSec) {
         const rect = lifeSec.getBoundingClientRect();
@@ -383,91 +371,106 @@ export default function LandingPage() {
             <p>Coverage Twin turns fragmented policy, clinical, financial and operational evidence into a decision-ready case that evolves instead of restarting at every stage.</p>
           </div>
 
-          <div className="case-rail" id="caseRail">
-            <article className="case-card">
-              <div className="case-visual visual-preauth">
-                <div className="mini-ui">
-                  <span className="mini-kicker">STAGE 01 • PRE-AUTH</span>
-                  <strong>₹85,000</strong>
-                  <small>Laparoscopic cholecystectomy</small>
-                  <div className="mini-bars">
-                    <span style={createMiniBarStyle("92%")}></span>
-                    <span style={createMiniBarStyle("78%")}></span>
-                    <span style={createMiniBarStyle("86%")}></span>
-                  </div>
-                  <span className="mini-status">● DECISION READY</span>
-                </div>
+          <div className="case-rail-shell">
+            <div className="case-rail-header">
+              <div>
+                <p className="micro-label case-rail-label">FOLLOW THE CASE RAIL</p>
+                <p className="case-rail-hint">Scroll or swipe sideways to trace each decision handoff without leaving the same case state.</p>
               </div>
-              <h3>Pre-authorisation</h3>
-              <p>Evidence, coverage and clinical necessity synthesized into a reviewable recommendation.</p>
-            </article>
+              <Link className="rail-link" href="/dashboard">Open the live dashboard</Link>
+            </div>
 
-            <article className="case-card">
-              <div className="case-visual visual-re-eval">
-                <div className="mini-ui">
-                  <span className="mini-kicker">STAGE 02 • RE-EVALUATION</span>
-                  <strong style={{ fontSize: "24px" }}>Δ FACT CHANGE</strong>
-                  <small>Material fact change detected in treatment plan.</small>
-                  <div className="mini-bars">
-                    <span style={createMiniBarStyle("100%", "var(--warning)")}></span>
-                    <span style={createMiniBarStyle("65%", "var(--warning)")}></span>
+            <div
+              className="case-rail"
+              id="caseRail"
+              tabIndex={0}
+              aria-label="Coverage Twin case stages. Scroll horizontally to compare each decision checkpoint."
+            >
+              <article className="case-card">
+                <div className="case-visual visual-preauth">
+                  <div className="mini-ui">
+                    <span className="mini-kicker">STAGE 01 • PRE-AUTH</span>
+                    <strong>₹85,000</strong>
+                    <small>Laparoscopic cholecystectomy</small>
+                    <div className="mini-bars">
+                      <span style={createMiniBarStyle("92%")}></span>
+                      <span style={createMiniBarStyle("78%")}></span>
+                      <span style={createMiniBarStyle("86%")}></span>
+                    </div>
+                    <span className="mini-status">● DECISION READY</span>
                   </div>
-                  <span className="mini-status warning">● RE-CALIBRATED</span>
                 </div>
-              </div>
-              <h3>Material change</h3>
-              <p>Re-evaluates downstream implications without invalidating baseline context.</p>
-            </article>
+                <h3>Pre-authorisation</h3>
+                <p>Evidence, coverage and clinical necessity synthesized into a reviewable recommendation.</p>
+              </article>
 
-            <article className="case-card">
-              <div className="case-visual visual-discharge">
-                <div className="mini-ui">
-                  <span className="mini-kicker">STAGE 03 • RECONCILIATION</span>
-                  <div className="mini-grid-lines">
-                    <div><span>Clinical Summary</span><b>MATCHED ✓</b></div>
-                    <div><span>Discharge Facts</span><b>VERIFIED ✓</b></div>
-                    <div><span>Admissibility</span><b>CLEAN (0% Co-pay)</b></div>
+              <article className="case-card">
+                <div className="case-visual visual-re-eval">
+                  <div className="mini-ui">
+                    <span className="mini-kicker">STAGE 02 • RE-EVALUATION</span>
+                    <strong style={{ fontSize: "24px" }}>Δ FACT CHANGE</strong>
+                    <small>Material fact change detected in treatment plan.</small>
+                    <div className="mini-bars">
+                      <span style={createMiniBarStyle("100%", "var(--warning)")}></span>
+                      <span style={createMiniBarStyle("65%", "var(--warning)")}></span>
+                    </div>
+                    <span className="mini-status warning">● RE-CALIBRATED</span>
                   </div>
-                  <span className="mini-status">● DISCHARGE READY</span>
                 </div>
-              </div>
-              <h3>Discharge & settlement</h3>
-              <p>Reconciles outcome facts and actual costs against authorized limits.</p>
-            </article>
+                <h3>Material change</h3>
+                <p>Re-evaluates downstream implications without invalidating baseline context.</p>
+              </article>
 
-            <article className="case-card">
-              <div className="case-visual visual-audit">
-                <div className="mini-ui">
-                  <span className="mini-kicker">DURABLE AUDIT TRAIL</span>
-                  <div className="mini-log">
-                    <div><span>01</span><b>INTAKE</b><i>ACCEPTED</i></div>
-                    <div><span>02</span><b>PREAUTH</b><i>AUTHORISED</i></div>
-                    <div><span>03</span><b>REEVAL</b><i>UNCHANGED</i></div>
-                    <div><span>04</span><b>SETTLE</b><i>EXECUTED</i></div>
+              <article className="case-card">
+                <div className="case-visual visual-discharge">
+                  <div className="mini-ui">
+                    <span className="mini-kicker">STAGE 03 • RECONCILIATION</span>
+                    <div className="mini-grid-lines">
+                      <div><span>Clinical Summary</span><b>MATCHED ✓</b></div>
+                      <div><span>Discharge Facts</span><b>VERIFIED ✓</b></div>
+                      <div><span>Admissibility</span><b>CLEAN (0% Co-pay)</b></div>
+                    </div>
+                    <span className="mini-status">● DISCHARGE READY</span>
                   </div>
-                  <span className="mini-status" style={{ background: "var(--lime)", color: "var(--forest)" }}>● AUDIT VERIFIED</span>
                 </div>
-              </div>
-              <h3>Audit by construction</h3>
-              <p>Every important transition leaves a durable who / what / when / why / source trail.</p>
-            </article>
+                <h3>Discharge & settlement</h3>
+                <p>Reconciles outcome facts and actual costs against authorized limits.</p>
+              </article>
 
-            <article className="case-card">
-              <div className="case-visual visual-settle">
-                <div className="mini-ui">
-                  <span className="mini-kicker">DECISION RECORD</span>
-                  <div className="settle-total">₹85,000</div>
-                  <div className="settle-line"><span>Requested</span><b>₹85,000</b></div>
-                  <div className="settle-line"><span>Eligible</span><b>₹85,000</b></div>
-                  <div className="settle-line"><span>Outcome</span><b>AUTHORISE</b></div>
-                  <div style={{ marginTop: 12 }}>
-                    <span className="mini-status">● PACKET RECORDED</span>
+              <article className="case-card">
+                <div className="case-visual visual-audit">
+                  <div className="mini-ui">
+                    <span className="mini-kicker">DURABLE AUDIT TRAIL</span>
+                    <div className="mini-log">
+                      <div><span>01</span><b>INTAKE</b><i>ACCEPTED</i></div>
+                      <div><span>02</span><b>PREAUTH</b><i>AUTHORISED</i></div>
+                      <div><span>03</span><b>REEVAL</b><i>UNCHANGED</i></div>
+                      <div><span>04</span><b>SETTLE</b><i>EXECUTED</i></div>
+                    </div>
+                    <span className="mini-status" style={{ background: "var(--lime)", color: "var(--forest)" }}>● AUDIT VERIFIED</span>
                   </div>
                 </div>
-              </div>
-              <h3>Decision packet</h3>
-              <p>The recommendation, evidence, reviewer action and timestamps collapse into one defensible record.</p>
-            </article>
+                <h3>Audit by construction</h3>
+                <p>Every important transition leaves a durable who / what / when / why / source trail.</p>
+              </article>
+
+              <article className="case-card">
+                <div className="case-visual visual-settle">
+                  <div className="mini-ui">
+                    <span className="mini-kicker">DECISION RECORD</span>
+                    <div className="settle-total">₹85,000</div>
+                    <div className="settle-line"><span>Requested</span><b>₹85,000</b></div>
+                    <div className="settle-line"><span>Eligible</span><b>₹85,000</b></div>
+                    <div className="settle-line"><span>Outcome</span><b>AUTHORISE</b></div>
+                    <div style={{ marginTop: 12 }}>
+                      <span className="mini-status">● PACKET RECORDED</span>
+                    </div>
+                  </div>
+                </div>
+                <h3>Decision packet</h3>
+                <p>The recommendation, evidence, reviewer action and timestamps collapse into one defensible record.</p>
+              </article>
+            </div>
           </div>
         </section>
 
