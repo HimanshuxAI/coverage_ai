@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import type { CaseRecord } from "@/types/workflow";
 
-import { calculateDashboardMetrics } from "./metrics";
+import {
+  calculateDashboardMetrics,
+  formatDashboardMetricValue,
+} from "./metrics";
 
 function makeCaseRecord(
   currentCaseStatus: CaseRecord["current_case_status"],
@@ -59,5 +62,13 @@ describe("calculateDashboardMetrics", () => {
       authorisedCases: 1,
       exceptionCases: 2,
     });
+  });
+});
+
+describe("formatDashboardMetricValue", () => {
+  it("preserves zero values and renders unavailable metrics distinctly", () => {
+    expect(formatDashboardMetricValue(0)).toBe("00");
+    expect(formatDashboardMetricValue(5)).toBe("05");
+    expect(formatDashboardMetricValue(null)).toBe("—");
   });
 });
