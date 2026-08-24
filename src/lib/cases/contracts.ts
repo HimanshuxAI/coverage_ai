@@ -6,6 +6,7 @@ import type {
   ResolutionGraph,
 } from "@/types/workflow";
 import type { ExecutionProof } from "@/lib/yoxa/execution-proof";
+import type { WorkflowRunStatus } from "@/lib/yoxa/types";
 
 export interface ApiEnvelope<T> {
   success: true;
@@ -24,7 +25,7 @@ export interface WorkflowRunRow {
   workflow_name: string | null;
   yoxa_execution_id: string | null;
   idempotency_key: string;
-  status: string;
+  status: WorkflowRunStatus;
   attempt: number;
   input_payload: Record<string, unknown> | null;
   raw_response: Record<string, unknown> | null;
@@ -98,7 +99,7 @@ export interface WorkflowRunDto {
   workflowName: string;
   yoxaExecutionId: string | null;
   idempotencyKey: string;
-  status: string;
+  status: WorkflowRunStatus;
   attempt: number;
   inputPayload: Record<string, unknown> | null;
   rawResponse: Record<string, unknown> | null;

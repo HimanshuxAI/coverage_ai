@@ -1,6 +1,7 @@
 import { getStatusPresentation, type StatusPresentation } from "@/lib/workflow/presentation";
 import {
   getWorkflowStatusPresentation,
+  isTerminalWorkflowStatus,
   isWorkflowRunStatus,
   shouldPollWorkflowRuns,
   type WorkflowStatusPresentation,
@@ -167,7 +168,7 @@ function isWorkflowRunDto(value: unknown): value is CaseAggregate["workflowRuns"
     isNullableString(value.failedAt) &&
     isString(value.createdAt) &&
     isString(value.updatedAt) &&
-    isExecutionProof(value.executionProof)
+    isExecutionProof(value.executionProof, value.status)
   );
 }
 
@@ -184,7 +185,10 @@ function isExecutionProofState(value: unknown): value is ExecutionProof["state"]
   );
 }
 
-function isExecutionProof(value: unknown): value is ExecutionProof {
+function isExecutionProof(
+  value: unknown,
+  expectedCurrentStatus?: WorkflowRunStatus
+): value is ExecutionProof {
   return (
     isRecord(value) &&
     isExecutionProofState(value.state) &&
@@ -203,6 +207,7 @@ function isExecutionProof(value: unknown): value is ExecutionProof {
     isNullableString(value.acceptedResponse.yoxaExecutionId) &&
     isRecord(value.currentRun) &&
     isWorkflowRunStatus(value.currentRun.status) &&
+    (expectedCurrentStatus === undefined || value.currentRun.status === expectedCurrentStatus) &&
     isBoolean(value.currentRun.terminal) &&
     isNullableString(value.currentRun.startedAt) &&
     isNullableString(value.currentRun.completedAt) &&
@@ -468,6 +473,7 @@ function buildWorkflowProofStrip(
 
 function buildWorkflowInspector(
   run: CaseAggregate["workflowRuns"][number],
+  status: WorkflowRunStatus,
   statusPresentation: WorkflowStatusPresentation
 ): CommandCenterWorkflowRunInspector {
   return {
@@ -492,14 +498,14 @@ function buildWorkflowInspector(
         ? NOT_RECORDED
         : String(run.executionProof.acceptedResponse.upstreamStatusCode),
     acceptedResponse: formatAcceptedResponseValue(run.executionProof),
-    terminalState: run.executionProof.currentRun.terminal ? "TERMINAL" : "ACTIVE",
+    terminalState: isTerminalWorkflowStatus(status) ? "TERMINAL" : "ACTIVE",
   };
 }
 
 function buildWorkflowRunViewModel(
   run: CaseAggregate["workflowRuns"][number]
 ): CommandCenterWorkflowRunViewModel {
-  const status = run.status as WorkflowRunStatus;
+  const status = run.executionProof.currentRun.status;
   const statusPresentation = getWorkflowStatusPresentation(status);
 
   return {
@@ -507,7 +513,7 @@ function buildWorkflowRunViewModel(
     status,
     statusPresentation,
     proofStrip: buildWorkflowProofStrip(run.executionProof, statusPresentation),
-    inspector: buildWorkflowInspector(run, statusPresentation),
+    inspector: buildWorkflowInspector(run, status, statusPresentation),
   };
 }
 

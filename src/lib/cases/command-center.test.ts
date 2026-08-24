@@ -320,6 +320,48 @@ describe("unwrapCaseAggregateEnvelope", () => {
     });
   });
 
+  it("rejects workflow runs whose persisted status disagrees with executionProof.currentRun.status", () => {
+    const aggregate = buildAggregate();
+    const mismatchedEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [
+          {
+            ...buildWorkflowRun("COMPLETED"),
+            executionProof: {
+              ...buildWorkflowRun("COMPLETED").executionProof,
+              currentRun: {
+                ...buildWorkflowRun("COMPLETED").executionProof.currentRun,
+                status: "RUNNING",
+                terminal: false,
+                completedAt: null,
+              },
+            },
+          },
+        ],
+      },
+    };
+    const matchingEnvelope = {
+      success: true,
+      data: {
+        ...aggregate,
+        workflowRuns: [buildWorkflowRun("COMPLETED")],
+      },
+    } satisfies ApiEnvelope<CaseAggregate>;
+
+    expect(unwrapCaseAggregateEnvelope(mismatchedEnvelope)).toBeNull();
+    expect(unwrapCaseAggregateEnvelope(matchingEnvelope)?.workflowRuns[0]).toMatchObject({
+      status: "COMPLETED",
+      executionProof: {
+        currentRun: {
+          status: "COMPLETED",
+          terminal: true,
+        },
+      },
+    });
+  });
+
   it("rejects malformed dependency nodes and accepts valid dependency node DTOs", () => {
     const aggregate = buildAggregate();
     const malformedDependencyNodeEnvelope = {

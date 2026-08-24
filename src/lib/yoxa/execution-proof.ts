@@ -1,5 +1,5 @@
 import type { WorkflowRunRow } from "@/lib/cases/contracts";
-import type { WorkflowRunRecord } from "./types";
+import type { WorkflowRunRecord, WorkflowRunStatus } from "./types";
 
 export type ExecutionProofState =
   | "resume-tracking"
@@ -29,7 +29,7 @@ export interface ExecutionProof {
     yoxaExecutionId: string | null;
   };
   currentRun: {
-    status: string;
+    status: WorkflowRunStatus;
     terminal: boolean;
     startedAt: string | null;
     completedAt: string | null;
@@ -141,7 +141,7 @@ function normalizeState(
   }
 }
 
-function isTerminalStatus(status: string): boolean {
+function isTerminalStatus(status: WorkflowRunStatus): boolean {
   return status === "COMPLETED" || status === "FAILED" || status === "CANCELLED";
 }
 
