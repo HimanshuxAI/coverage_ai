@@ -1077,6 +1077,179 @@
   z-index: 1;
 }
 
+/* ======================================================
+   COMMAND CENTER HARDENING
+   ====================================================== */
+.commandCenterMain {
+  width: min(100%, 1440px);
+}
+
+.commandCenterHeaderRow {
+  gap: 24px;
+}
+
+.commandCenterMeta {
+  row-gap: 10px;
+}
+
+.commandCenterActions {
+  flex-shrink: 0;
+}
+
+.commandCenterMetricsGrid,
+.commandCenterPrimaryGrid,
+.commandCenterSecondaryGrid,
+.commandCenterStateGrid,
+.commandCenterWorkflowGrid,
+.commandCenterInspectorGrid {
+  min-width: 0;
+}
+
+.commandCenterPanel,
+.commandCenterWorkflowCard,
+.commandCenterInspector {
+  min-width: 0;
+}
+
+.commandCenterWorkflowCard {
+  min-height: 100%;
+}
+
+.commandCenterWorkflowCard:focus-visible,
+.commandCenterCopyButton:focus-visible {
+  outline: 3px solid var(--lime);
+  outline-offset: 3px;
+}
+
+.commandCenterInspectorGrid code {
+  overflow-wrap: anywhere;
+}
+
+.commandCenterAuditRow {
+  align-items: flex-start;
+}
+
+@media (max-width: 1180px) {
+  .commandCenterMetricsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .commandCenterWorkflowGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .commandCenterInspectorGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 960px) {
+  .commandCenterMain {
+    padding-left: 20px !important;
+    padding-right: 20px !important;
+  }
+
+  .commandCenterHeaderRow,
+  .commandCenterPrimaryGrid,
+  .commandCenterSecondaryGrid {
+    grid-template-columns: 1fr;
+    flex-direction: column;
+  }
+
+  .commandCenterHeaderRow {
+    align-items: stretch !important;
+  }
+
+  .commandCenterActions {
+    justify-content: flex-start !important;
+  }
+
+  .commandCenterStateGrid,
+  .commandCenterWorkflowGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 700px) {
+  .commandCenterMain {
+    padding: 24px 16px 56px !important;
+  }
+
+  .commandCenterMetricsGrid,
+  .commandCenterStateGrid,
+  .commandCenterWorkflowGrid,
+  .commandCenterInspectorGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .commandCenterPanel,
+  .commandCenterInspector {
+    padding: 20px !important;
+  }
+
+  .commandCenterAuditRow {
+    flex-direction: column;
+  }
+}
+
+@media print {
+  .landingRoot {
+    min-height: auto !important;
+    background: #FFFFFF !important;
+    background-image: none !important;
+    color: #07130C !important;
+    overflow: visible !important;
+  }
+
+  .commandCenterMain {
+    width: 100% !important;
+    max-width: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  .commandCenterPrintHide {
+    display: none !important;
+  }
+
+  .commandCenterHeader,
+  .commandCenterMetricsGrid,
+  .commandCenterPanel,
+  .commandCenterWorkflowCard,
+  .commandCenterInspector,
+  .commandCenterStateGrid > div {
+    background: #FFFFFF !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .commandCenterPrimaryGrid,
+  .commandCenterSecondaryGrid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .commandCenterMetricsGrid,
+  .commandCenterWorkflowGrid,
+  .commandCenterInspectorGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .commandCenterWorkflowCard {
+    color: #07130C !important;
+    cursor: default !important;
+  }
+
+  .commandCenterAuditRow {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .commandCenterInspectorGrid code {
+    white-space: normal;
+  }
+}
+
 @media (max-width: 1024px) {
   .fragmentationGrid, .structuredHeader {
     grid-template-columns: 1fr;

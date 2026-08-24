@@ -497,6 +497,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
       <button
         type="button"
         onClick={() => void handleCopyField(field.key)}
+        className={`${styles.commandCenterCopyButton} ${styles.commandCenterPrintHide}`}
         style={{
           marginLeft: 8,
           border: "1px solid var(--grid)",
@@ -518,7 +519,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
 
   return (
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
-      <header className={styles.navShell}>
+      <header className={`${styles.navShell} ${styles.commandCenterPrintHide}`}>
         <div className={styles.navLeft}>
           <Link
             href="/dashboard"
@@ -555,9 +556,9 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
         </div>
       </header>
 
-      <main style={{ padding: "40px 32px 80px", maxWidth: "1440px", margin: "0 auto" }}>
-        <div style={{ marginBottom: 32, borderBottom: "1px solid var(--grid)", paddingBottom: 24 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+      <main className={styles.commandCenterMain} style={{ padding: "40px 32px 80px", maxWidth: "1440px", margin: "0 auto" }}>
+        <div className={styles.commandCenterHeader} style={{ marginBottom: 32, borderBottom: "1px solid var(--grid)", paddingBottom: 24 }}>
+          <div className={styles.commandCenterHeaderRow} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
               <div
                 style={{
@@ -582,7 +583,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               >
                 {viewModel?.caseRecord.plannedProcedure ?? (summaryStateMessage ?? "CASE RECORD")}
               </h1>
-              <div style={{ display: "flex", gap: 16, marginTop: 10, fontSize: "13px", color: "var(--muted)", flexWrap: "wrap" }}>
+              <div className={styles.commandCenterMeta} style={{ display: "flex", gap: 16, marginTop: 10, fontSize: "13px", color: "var(--muted)", flexWrap: "wrap" }}>
                 <span>
                   CASE: <strong style={{ color: "var(--ink)" }}>{caseId}</strong>
                   {renderCopyButton("caseId")}
@@ -612,6 +613,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
             </div>
 
             <div
+              className={`${styles.commandCenterActions} ${styles.commandCenterPrintHide}`}
               style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap", justifyContent: "flex-end" }}
             >
               <button
@@ -670,6 +672,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
         )}
 
         <div
+          className={styles.commandCenterMetricsGrid}
           style={{
             display: "grid",
             gridTemplateColumns: "repeat(4, 1fr)",
@@ -749,8 +752,9 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           </div>
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 32, marginBottom: 48 }}>
+        <div className={styles.commandCenterPrimaryGrid} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 32, marginBottom: 48 }}>
           <div
+            className={styles.commandCenterPanel}
             style={{
               background: "var(--surface)",
               border: "1px solid var(--forest)",
@@ -793,7 +797,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               </span>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
+            <div className={styles.commandCenterStateGrid} style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20 }}>
               <div style={{ background: "var(--bg)", border: "1px solid var(--grid)", padding: 16 }}>
                 <div style={{ fontSize: "10px", fontWeight: 800, letterSpacing: "0.14em", color: "var(--forest)", marginBottom: 6 }}>
                   MEMBER DOMAIN
@@ -888,7 +892,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
             </div>
           </div>
 
-          <div style={{ background: "var(--surface)", border: "1px solid var(--forest)", padding: 32 }}>
+          <div className={styles.commandCenterPanel} style={{ background: "var(--surface)", border: "1px solid var(--forest)", padding: 32 }}>
             <div
               style={{
                 fontSize: "11px",
@@ -977,7 +981,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           </div>
         </div>
 
-        <div style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32, marginBottom: 48 }}>
+        <div className={styles.commandCenterPanel} style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32, marginBottom: 48 }}>
           <h3
             style={{
               fontSize: "16px",
@@ -1010,11 +1014,12 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           )}
 
           {viewModel && viewModel.workflow.runs.length > 0 ? (
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>
+            <div className={styles.commandCenterWorkflowGrid} style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: 16 }}>
               {viewModel.workflow.runs.map((workflowRun, index) => (
                 <button
                   key={workflowRun.id}
                   type="button"
+                  className={styles.commandCenterWorkflowCard}
                   onClick={() =>
                     setSelectedWorkflowRunId((current) =>
                       getCommandCenterInspectorSelection({
@@ -1098,6 +1103,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               id="workflow-run-inspector"
               role="region"
               aria-label="Technical workflow run inspection"
+              className={styles.commandCenterInspector}
               style={{ marginTop: 24, padding: 20, background: "var(--bg)", border: "1px solid var(--forest)" }}
             >
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1117,6 +1123,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                     )
                   }
                   aria-label="Close workflow run inspector"
+                  className={styles.commandCenterPrintHide}
                   style={{
                     background: "none",
                     border: "1px solid var(--grid)",
@@ -1130,7 +1137,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                   CLOSE
                 </button>
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 12, fontSize: "12px" }}>
+              <div className={styles.commandCenterInspectorGrid} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginTop: 12, fontSize: "12px" }}>
                 <div>
                   Workflow: <strong>{selectedWorkflowRun.inspector.workflowName}</strong>
                 </div>
@@ -1176,8 +1183,8 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
           )}
         </div>
 
-        <div style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 32 }}>
-          <div style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32 }}>
+        <div className={styles.commandCenterSecondaryGrid} style={{ display: "grid", gridTemplateColumns: "1.2fr 0.8fr", gap: 32 }}>
+          <div className={styles.commandCenterPanel} style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32 }}>
             <h3
               style={{
                 fontSize: "14px",
@@ -1191,11 +1198,12 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
               Case Operational Audit Trail
             </h3>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: "13px" }}>
+            <div className={styles.commandCenterAuditList} style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: "13px" }}>
               {viewModel && viewModel.workflow.activity.length > 0 ? (
                 viewModel.workflow.activity.map((activityItem) => (
                   <div
                     key={activityItem.id}
+                    className={styles.commandCenterAuditRow}
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -1218,7 +1226,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
             </div>
           </div>
 
-          <div style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32 }}>
+          <div className={styles.commandCenterPanel} style={{ background: "var(--surface)", border: "1px solid var(--grid)", padding: 32 }}>
             <h3
               style={{
                 fontSize: "14px",
@@ -1244,6 +1252,7 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
                 href={packetAction.href}
                 target="_blank"
                 rel="noreferrer"
+                className={styles.commandCenterPrintHide}
                 style={{
                   display: "inline-block",
                   background: "var(--bg)",
