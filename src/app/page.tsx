@@ -14,7 +14,7 @@ function createMiniBarStyle(width: string, background?: string): MiniBarStyle {
 }
 
 export default function LandingPage() {
-  const [activeShowcaseStage, setActiveShowcaseStage] = useState(0);
+  const [, setActiveShowcaseStage] = useState(0);
   const [originProgress, setOriginProgress] = useState(0);
   const [judgementProgress, setJudgementProgress] = useState(0);
   const [activeLifecycleStep, setActiveLifecycleStep] = useState(0);
@@ -391,9 +391,9 @@ export default function LandingPage() {
                   <strong>₹85,000</strong>
                   <small>Laparoscopic cholecystectomy</small>
                   <div className="mini-bars">
-                    <span style={{ ["--w" as any]: "92%" }}></span>
-                    <span style={{ ["--w" as any]: "78%" }}></span>
-                    <span style={{ ["--w" as any]: "86%" }}></span>
+                    <span style={createMiniBarStyle("92%")}></span>
+                    <span style={createMiniBarStyle("78%")}></span>
+                    <span style={createMiniBarStyle("86%")}></span>
                   </div>
                   <span className="mini-status">● DECISION READY</span>
                 </div>
@@ -409,8 +409,8 @@ export default function LandingPage() {
                   <strong style={{ fontSize: "24px" }}>Δ FACT CHANGE</strong>
                   <small>Material fact change detected in treatment plan.</small>
                   <div className="mini-bars">
-                    <span style={{ ["--w" as any]: "100%", background: "var(--warning)" }}></span>
-                    <span style={{ ["--w" as any]: "65%", background: "var(--warning)" }}></span>
+                    <span style={createMiniBarStyle("100%", "var(--warning)")}></span>
+                    <span style={createMiniBarStyle("65%", "var(--warning)")}></span>
                   </div>
                   <span className="mini-status warning">● RE-CALIBRATED</span>
                 </div>
