@@ -1,0 +1,1105 @@
+/* ======================================================
+   COVERAGE TWIN LANDING PAGE — PHASE 1 SCOPED STYLES
+   ====================================================== */
+
+.landingRoot {
+  --bg: #F4F6F3;
+  --surface: #FFFFFF;
+  --ink: #07130C;
+  --forest: #063B22;
+  --lime: #C7F36B;
+  --green: #20C878;
+  --brightLime: #D8FF78;
+  --grid: #DCE2DD;
+  --muted: #68716B;
+  --danger: #D94A4A;
+  --warning: #D99A2B;
+
+  background-color: var(--bg);
+  color: var(--ink);
+  font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  position: relative;
+  overflow-x: hidden;
+  box-sizing: border-box;
+  
+  /* Technical Grid Background */
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--grid) 55%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--grid) 55%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+.landingRoot *, .landingRoot *::before, .landingRoot *::after {
+  box-sizing: border-box;
+}
+
+/* ======================================================
+   01 — NAVIGATION
+   ====================================================== */
+.navShell {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 32px;
+  background: rgba(244, 246, 243, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--grid);
+}
+
+.navLeft {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  text-decoration: none;
+  color: var(--ink);
+}
+
+.navMark {
+  width: 24px;
+  height: 16px;
+  display: inline-block;
+  image-rendering: pixelated;
+  background: linear-gradient(90deg, var(--forest) 0 30%, transparent 30% 45%, var(--lime) 45% 75%, transparent 75% 85%, var(--forest) 85% 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 40%, 60% 40%, 60% 100%, 40% 100%, 40% 40%, 0 40%);
+}
+
+.navTitle {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.navRight {
+  display: flex;
+  align-items: center;
+  gap: 28px;
+}
+
+.navScrollLink {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  transition: color 0.15s ease;
+}
+
+.navScrollLink:hover {
+  color: var(--ink);
+}
+
+.navProductBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--forest);
+  color: var(--bg);
+  text-decoration: none;
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  border-radius: 2px;
+  transition: background 0.15s ease, transform 0.1s ease;
+}
+
+.navProductBtn:hover {
+  background: var(--ink);
+  color: var(--lime);
+}
+
+/* ======================================================
+   02 — HERO & HERO GRID
+   ====================================================== */
+.heroSection {
+  position: relative;
+  padding: 48px 32px 64px;
+  border-bottom: 1px solid var(--grid);
+  min-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.heroGrid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 48px;
+  align-items: start;
+}
+
+.heroLeft {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.heroHeadline {
+  font-size: clamp(64px, 7.5vw, 140px);
+  line-height: 0.88;
+  letter-spacing: -0.055em;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0 0 32px 0;
+  text-transform: uppercase;
+}
+
+.heroHeadline strong {
+  font-weight: 400;
+  color: var(--forest);
+}
+
+.heroRight {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding-left: 24px;
+  border-left: 1px solid var(--grid);
+}
+
+.eyebrow {
+  font-size: clamp(14px, 1.4vw, 22px);
+  line-height: 1.25;
+  letter-spacing: 0.08em;
+  font-weight: 600;
+  color: var(--forest);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.heroDesc {
+  font-size: clamp(15px, 1.2vw, 19px);
+  line-height: 1.5;
+  color: var(--muted);
+  margin: 0;
+  max-width: 520px;
+}
+
+.systemProofGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--grid);
+}
+
+.proofItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.proofNum {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--forest);
+}
+
+.proofLabel {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+.ctaGroup {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+
+.btnPrimary {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--forest);
+  color: var(--lime);
+  text-decoration: none;
+  padding: 16px 28px;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--forest);
+  border-radius: 2px;
+  transition: all 0.15s ease;
+  box-shadow: 4px 4px 0 var(--ink);
+}
+
+.btnPrimary:hover {
+  background: var(--ink);
+  color: var(--lime);
+  box-shadow: 6px 6px 0 var(--forest);
+  transform: translateY(-1px);
+}
+
+.btnSecondary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--ink);
+  text-decoration: none;
+  padding: 14px 20px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--grid);
+  background: var(--surface);
+  border-radius: 2px;
+  transition: all 0.15s ease;
+}
+
+.btnSecondary:hover {
+  border-color: var(--forest);
+  color: var(--forest);
+}
+
+/* ======================================================
+   03 — HERO PIXEL ANIMATION & CANVAS
+   ====================================================== */
+.pixelCanvasWrap {
+  position: relative;
+  width: 100%;
+  height: 520px;
+  margin-top: 48px;
+  overflow: hidden;
+  border-top: 1px solid var(--grid);
+  border-bottom: 1px solid var(--grid);
+  background: var(--surface);
+}
+
+.heroCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* ======================================================
+   04 — LIVE CASE OVERLAY
+   ====================================================== */
+.liveCaseOverlay {
+  position: absolute;
+  right: 32px;
+  bottom: 32px;
+  z-index: 10;
+  width: 380px;
+  background: var(--surface);
+  border: 1px solid var(--forest);
+  box-shadow: 8px 8px 0 var(--forest);
+  padding: 20px;
+  font-family: inherit;
+}
+
+.caseHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid var(--grid);
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.caseId {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--muted);
+}
+
+.caseStatusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--lime);
+  color: var(--forest);
+  padding: 4px 10px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+
+.statusDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--forest);
+  animation: pulse 1.8s infinite ease-in-out;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+.caseProc {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+  margin: 0 0 6px 0;
+  line-height: 1.3;
+}
+
+.caseAmount {
+  font-size: 28px;
+  font-weight: 300;
+  color: var(--forest);
+  letter-spacing: -0.03em;
+  margin-bottom: 16px;
+}
+
+.caseMetricsGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--grid);
+  border-bottom: 1px solid var(--grid);
+  margin-bottom: 14px;
+}
+
+.metricItem {
+  display: flex;
+  flex-direction: column;
+}
+
+.metricLabel {
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.metricVal {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--forest);
+}
+
+.caseWorkflowTrack {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.trackStep {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted);
+}
+
+.trackDone {
+  color: var(--green);
+}
+
+.trackActive {
+  color: var(--forest);
+  font-weight: 700;
+}
+
+/* Demo visualization note */
+.demoNote {
+  font-size: 9px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  margin-top: 10px;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+/* ======================================================
+   05 — HERO TRANSITION STATEMENT
+   ====================================================== */
+.transitionStatement {
+  padding: 80px 32px;
+  border-bottom: 1px solid var(--grid);
+  background: var(--surface);
+  text-align: left;
+}
+
+.transitionText {
+  font-size: clamp(28px, 4vw, 56px);
+  line-height: 1.12;
+  letter-spacing: -0.03em;
+  font-weight: 300;
+  color: var(--ink);
+  max-width: 1120px;
+  margin: 0;
+}
+
+.transitionText strong {
+  font-weight: 400;
+  color: var(--forest);
+}
+
+/* ======================================================
+   06 — ONE CASE. ONE CONTINUOUS TRUTH.
+   ====================================================== */
+.truthSection {
+  padding: 120px 32px;
+  border-bottom: 1px solid var(--grid);
+  scroll-margin-top: 70px;
+}
+
+.truthGrid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 64px;
+  align-items: start;
+}
+
+.truthHeadline {
+  font-size: clamp(48px, 5.5vw, 96px);
+  line-height: 0.95;
+  letter-spacing: -0.045em;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.truthHeadline strong {
+  font-weight: 400;
+  color: var(--forest);
+  display: block;
+}
+
+.truthCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  font-size: clamp(16px, 1.3vw, 21px);
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.truthCopy p {
+  margin: 0;
+}
+
+.truthAccentLine {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  color: var(--forest);
+  text-transform: uppercase;
+  margin-top: 12px;
+}
+
+.accentSquare {
+  width: 10px;
+  height: 10px;
+  background: var(--lime);
+  border: 1px solid var(--forest);
+
+}
+
+/* ======================================================
+   07 — LIFECYCLE VISUALIZATION
+   ====================================================== */
+.lifecycleSection {
+  padding: 100px 32px 140px;
+  border-bottom: 1px solid var(--grid);
+  background: var(--surface);
+}
+
+.lifecycleHeader {
+  margin-bottom: 64px;
+}
+
+.lifecycleTitle {
+  font-size: clamp(32px, 3.5vw, 64px);
+  letter-spacing: -0.035em;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+}
+
+.lifecycleSub {
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+/* Lifecycle Architectural Map */
+.lifecycleMap {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  position: relative;
+}
+
+.mainPathRow {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 16px;
+  position: relative;
+}
+
+/* Connecting Line Across Main Path */
+.mainPathRow::before {
+  content: "";
+  position: absolute;
+  top: 36px;
+  left: 5%;
+  right: 5%;
+  height: 2px;
+  background: var(--grid);
+  z-index: 1;
+}
+
+.lifecycleCard {
+  position: relative;
+  z-index: 2;
+  background: var(--bg);
+  border: 1px solid var(--grid);
+  padding: 20px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.lifecycleCard:hover {
+  border-color: var(--forest);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(6, 59, 34, 0.08);
+}
+
+.stepNum {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: var(--forest);
+  color: var(--lime);
+  font-size: 11px;
+  font-weight: 700;
+  margin-bottom: 14px;
+}
+
+.stepName {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 8px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.stepDesc {
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Conditional Branch Section */
+.conditionalContainer {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  margin-top: 16px;
+  padding-top: 32px;
+  border-top: 1px dashed var(--grid);
+}
+
+.branchCard {
+  background: var(--surface);
+  border: 1px dashed var(--forest);
+  padding: 24px;
+  position: relative;
+}
+
+.branchTag {
+  position: absolute;
+  top: -12px;
+  left: 20px;
+  background: var(--lime);
+  color: var(--forest);
+  padding: 2px 8px;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+/* System Proof Understated Label */
+.systemProofFooter {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 64px;
+  padding-top: 24px;
+  border-top: 1px solid var(--grid);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* ======================================================
+   RESPONSIVE MEDIA QUERIES
+   ===================================================== */
+@media (max-width: 1024px) {
+  .heroGrid, .truthGrid {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .heroRight {
+    padding-left: 0;
+    border-left: none;
+    border-top: 1px solid var(--grid);
+    padding-top: 32px;
+  }
+  .mainPathRow {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .mainPathRow::before {
+    display: none;
+  }
+  .liveCaseOverlay {
+    position: relative;
+    right: auto;
+    bottom: auto;
+    width: 100%;
+    margin-top: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .navShell {
+    padding: 12px 16px;
+  }
+  .heroSection {
+    padding: 32px 16px 48px;
+  }
+  .pixelCanvasWrap {
+    height: 380px;
+    margin-top: 32px;
+  }
+  .transitionStatement, .truthSection, .lifecycleSection {
+    padding: 60px 16px;
+  }
+  .mainPathRow {
+    grid-template-columns: 1fr;
+  }
+  .conditionalContainer {
+    grid-template-columns: 1fr;
+  }
+  .ctaGroup {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .btnPrimary, .btnSecondary {
+    justify-content: center;
+  }
+}
+
+/* ======================================================
+   PHASE 2 — SECTION A: BORN FRAGMENTED.
+   ====================================================== */
+.fragmentationSection {
+  padding: 140px 32px;
+  border-bottom: 1px solid var(--grid);
+  position: relative;
+  overflow: hidden;
+}
+
+.fragmentationGrid {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 64px;
+  align-items: start;
+  position: relative;
+  z-index: 2;
+}
+
+.fragmentationHeadline {
+  font-size: clamp(54px, 6.5vw, 115px);
+  line-height: 0.92;
+  letter-spacing: -0.05em;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.fragmentationHeadline strong {
+  font-weight: 400;
+  color: var(--forest);
+  display: block;
+}
+
+.microLabel {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-top: 20px;
+}
+
+.fragmentationCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-size: clamp(16px, 1.25vw, 20px);
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.problemHighlight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--grid);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  color: var(--forest);
+  text-transform: uppercase;
+}
+
+.problemSquare {
+  width: 10px;
+  height: 10px;
+  background: var(--lime);
+  border: 1px solid var(--forest);
+  flex-shrink: 0;
+}
+
+/* Detached Fragments Floating Grid */
+.fragmentsContainer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 48px;
+}
+
+.fragmentChip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--grid);
+  padding: 8px 14px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  color: var(--forest);
+  text-transform: uppercase;
+  border-radius: 2px;
+  box-shadow: 2px 2px 0 rgba(7, 19, 12, 0.04);
+  transition: all 0.2s ease;
+}
+
+.fragmentChip:hover {
+  border-color: var(--forest);
+  background: var(--bg);
+  transform: translateY(-2px);
+}
+
+.fragmentDot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+}
+
+/* ======================================================
+   PHASE 2 — SECTION B: CONVERGENCE CANVAS
+   ====================================================== */
+.convergenceSection {
+  padding: 120px 32px;
+  border-bottom: 1px solid var(--grid);
+  background: var(--surface);
+  position: relative;
+}
+
+.convergenceHeader {
+  text-align: center;
+  max-width: 720px;
+  margin: 0 auto 48px;
+}
+
+.convergenceTitle {
+  font-size: clamp(32px, 3.8vw, 68px);
+  font-weight: 300;
+  letter-spacing: -0.04em;
+  color: var(--ink);
+  margin: 0 0 12px;
+  text-transform: uppercase;
+}
+
+.convergenceSub {
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.convergenceCanvasWrap {
+  position: relative;
+  width: 100%;
+  height: 580px;
+  background: var(--bg);
+  border: 1px solid var(--grid);
+  overflow: hidden;
+}
+
+.convergenceCanvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.convergenceTransitionStatement {
+  padding: 64px 32px 0;
+  text-align: center;
+}
+
+.convergenceTransitionText {
+  font-size: clamp(24px, 3vw, 48px);
+  line-height: 1.15;
+  letter-spacing: -0.035em;
+  font-weight: 300;
+  color: var(--ink);
+  max-width: 980px;
+  margin: 0 auto;
+  text-transform: uppercase;
+}
+
+.convergenceTransitionText strong {
+  font-weight: 400;
+  color: var(--forest);
+}
+
+/* ======================================================
+   PHASE 2 — SECTION C: THE CASE, STRUCTURED.
+   ====================================================== */
+.structuredSection {
+  padding: 140px 32px;
+  border-bottom: 1px solid var(--grid);
+}
+
+.structuredHeader {
+  display: grid;
+  grid-template-columns: 1.1fr 0.9fr;
+  gap: 64px;
+  align-items: start;
+  margin-bottom: 72px;
+}
+
+.structuredHeadline {
+  font-size: clamp(48px, 5.5vw, 105px);
+  line-height: 0.94;
+  letter-spacing: -0.045em;
+  font-weight: 300;
+  color: var(--ink);
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.structuredHeadline strong {
+  font-weight: 400;
+  color: var(--forest);
+  display: block;
+}
+
+.structuredCopy {
+  font-size: clamp(16px, 1.25vw, 20px);
+  line-height: 1.55;
+  color: var(--muted);
+  margin: 0;
+}
+
+/* Architecture Diagram Workspace */
+.diagramWrap {
+  position: relative;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--forest);
+  box-shadow: 6px 6px 0 var(--forest);
+  padding: 48px;
+}
+
+.diagramGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 32px;
+  position: relative;
+  z-index: 2;
+}
+
+.domainNode {
+  background: var(--bg);
+  border: 1px solid var(--grid);
+  padding: 24px;
+  border-radius: 2px;
+  transition: all 0.2s ease;
+  position: relative;
+  cursor: pointer;
+}
+
+.domainNode:hover, .domainNodeActive {
+  border-color: var(--forest);
+  background: var(--surface);
+  box-shadow: 0 6px 20px rgba(6, 59, 34, 0.1);
+  transform: translateY(-2px);
+}
+
+.domainNodeActive {
+  border-color: var(--lime) !important;
+  box-shadow: 0 0 0 2px var(--lime), 0 8px 24px rgba(6, 59, 34, 0.12) !important;
+}
+
+.domainTag {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: var(--forest);
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.domainTagDot {
+  width: 6px;
+  height: 6px;
+  background: var(--lime);
+  border-radius: 50%;
+}
+
+.domainTitle {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--ink);
+  margin: 0 0 6px 0;
+}
+
+.domainDetail {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+  margin: 0;
+}
+
+.domainExpand {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--grid);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--forest);
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* Central Coverage Twin Node */
+.centerTwinNode {
+  grid-column: 1 / -1;
+  background: var(--forest);
+  color: var(--bg);
+  border: 2px solid var(--lime);
+  padding: 36px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 8px 32px rgba(6, 59, 34, 0.2);
+  margin: 16px 0;
+}
+
+.centerTwinTitle {
+  font-size: 28px;
+  font-weight: 300;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--surface);
+  text-transform: uppercase;
+}
+
+.centerTwinTitle strong {
+  font-weight: 700;
+  color: var(--lime);
+}
+
+.centerTwinStatus {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--lime);
+  color: var(--forest);
+  padding: 8px 16px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  border-radius: 2px;
+}
+
+/* Connecting Orthogonal Lines Overlay */
+.connectorSvg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 1;
+}
+
+@media (max-width: 1024px) {
+  .fragmentationGrid, .structuredHeader {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+  .diagramGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .centerTwinNode {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+}
+
+@media (max-width: 768px) {
+  .fragmentationSection, .convergenceSection, .structuredSection {
+    padding: 60px 16px;
+  }
+  .diagramGrid {
+    grid-template-columns: 1fr;
+  }
+  .diagramWrap {
+    padding: 20px;
+  }
+}
