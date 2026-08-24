@@ -5,6 +5,7 @@ import type {
   CaseAggregate,
   DependencyNodeDto,
 } from "./contracts";
+import { buildExecutionProof } from "@/lib/yoxa/execution-proof";
 
 const REQUIRED_READ_SOURCES = [
   "workflowRuns",
@@ -88,6 +89,7 @@ export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<
     failedAt: workflowRun.failed_at,
     createdAt: workflowRun.created_at,
     updatedAt: workflowRun.updated_at,
+    executionProof: buildExecutionProof(workflowRun),
   }));
 
   const evidenceReports = (input.evidenceReports.data ?? []).map((evidenceReport) => ({

@@ -5,6 +5,7 @@ import type {
   EvidenceReport,
   ResolutionGraph,
 } from "@/types/workflow";
+import type { ExecutionProof } from "@/lib/yoxa/execution-proof";
 
 export interface ApiEnvelope<T> {
   success: true;
@@ -110,6 +111,7 @@ export interface WorkflowRunDto {
   failedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  executionProof: ExecutionProof;
 }
 
 export interface EvidenceReportDto {

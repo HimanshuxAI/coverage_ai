@@ -59,18 +59,22 @@ function buildSupabaseClient(options?: {
   const graphEq = vi.fn(() => ({ order }));
   const graphSelect = vi.fn(() => ({ eq: graphEq }));
 
+  const insert = vi.fn().mockResolvedValue({ data: null, error: null });
+
   const from = vi.fn((table: string) => {
     switch (table) {
       case "cases":
         return { select: caseSelect };
       case "resolution_graphs":
         return { select: graphSelect };
+      case "audit_events":
+        return { insert };
       default:
         throw new Error(`Unexpected table: ${table}`);
     }
   });
 
-  return { from };
+  return { from, insert };
 }
 
 function expectNoSideEffects() {
@@ -229,5 +233,258 @@ describe("POST /api/cases/[caseId]/process", () => {
     });
     expect(updateWorkflowRunState).not.toHaveBeenCalled();
     expect(triggerYoxaWorkflow).not.toHaveBeenCalled();
+  });
+
+  it("returns local 202 Accepted with accepted proof after persistence and an accepted upstream trigger", async () => {
+    const supabaseClient = buildSupabaseClient();
+    createClient.mockResolvedValue(supabaseClient);
+    getOrCreateWorkflowRun.mockResolvedValue({
+      run: {
+        id: "run-accepted-1",
+        case_id: "case-123",
+        workflow_key: "discharge",
+        workflow_name: "Discharge",
+        yoxa_execution_id: null,
+        idempotency_key: "wf_discharge_case-123_1",
+        status: "QUEUED",
+        attempt: 1,
+        input_payload: { triggered_by: "api" },
+        raw_response: {},
+        normalized_output: {},
+        error_code: null,
+        error_message: null,
+        queued_at: "2026-08-24T11:00:00.000Z",
+        started_at: null,
+        completed_at: null,
+        failed_at: null,
+        created_at: "2026-08-24T11:00:00.000Z",
+        updated_at: "2026-08-24T11:00:00.000Z",
+      },
+      isExisting: false,
+    });
+    updateWorkflowRunState
+      .mockResolvedValueOnce({
+        id: "run-accepted-1",
+        status: "TRIGGERING",
+      })
+      .mockResolvedValueOnce({
+        id: "run-accepted-1",
+        case_id: "case-123",
+        workflow_key: "discharge",
+        workflow_name: "Discharge",
+        yoxa_execution_id: null,
+        idempotency_key: "wf_discharge_case-123_1",
+        status: "RUNNING",
+        attempt: 1,
+        input_payload: { triggered_by: "api" },
+        raw_response: {
+          statusCode: 202,
+          body: {
+            accepted: true,
+          },
+          rawBody: "{\"accepted\":true}",
+        },
+        normalized_output: {
+          triggered: true,
+          statusCode: 202,
+        },
+        error_code: null,
+        error_message: null,
+        queued_at: "2026-08-24T11:00:00.000Z",
+        started_at: "2026-08-24T11:00:05.000Z",
+        completed_at: null,
+        failed_at: null,
+        created_at: "2026-08-24T11:00:00.000Z",
+        updated_at: "2026-08-24T11:00:05.000Z",
+      });
+    triggerYoxaWorkflow.mockResolvedValue({
+      success: true,
+      statusCode: 202,
+      data: {
+        accepted: true,
+      },
+      rawBody: "{\"accepted\":true}",
+    });
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "discharge" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(202);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        caseId: "case-123",
+        executionProof: {
+          state: "accepted",
+          acceptedResponse: {
+            upstreamStatusCode: 202,
+            accepted: true,
+            yoxaExecutionId: null,
+          },
+          currentRun: {
+            status: "RUNNING",
+          },
+        },
+      },
+    });
+    expect(updateWorkflowRunState).toHaveBeenNthCalledWith(2, "run-accepted-1", {
+      status: "RUNNING",
+      raw_response: {
+        statusCode: 202,
+        body: {
+          accepted: true,
+        },
+        rawBody: "{\"accepted\":true}",
+      },
+      normalized_output: {
+        triggered: true,
+        statusCode: 202,
+        timestamp: expect.any(String),
+      },
+    });
+    expect(supabaseClient.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        agent_run_id: "run-accepted-1",
+        event_data: expect.objectContaining({
+          workflow_key: "discharge",
+          workflow_run_id: "run-accepted-1",
+          upstream_status: 202,
+        }),
+      })
+    );
+  });
+
+  it("returns resume-tracking proof for an existing active workflow run", async () => {
+    createClient.mockResolvedValue(buildSupabaseClient());
+    getOrCreateWorkflowRun.mockResolvedValue({
+      run: {
+        id: "run-existing-1",
+        case_id: "case-123",
+        workflow_key: "discharge",
+        workflow_name: "Discharge",
+        yoxa_execution_id: "yoxa-run-123",
+        idempotency_key: "wf_discharge_case-123_1",
+        status: "RUNNING",
+        attempt: 1,
+        input_payload: { triggered_by: "api" },
+        raw_response: {
+          statusCode: 202,
+          body: {
+            workflow_run_id: "yoxa-run-123",
+          },
+        },
+        normalized_output: {
+          triggered: true,
+          statusCode: 202,
+        },
+        error_code: null,
+        error_message: null,
+        queued_at: "2026-08-24T11:00:00.000Z",
+        started_at: "2026-08-24T11:00:05.000Z",
+        completed_at: null,
+        failed_at: null,
+        created_at: "2026-08-24T11:00:00.000Z",
+        updated_at: "2026-08-24T11:00:05.000Z",
+      },
+      isExisting: true,
+    });
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "discharge" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(200);
+    await expect(response.json()).resolves.toMatchObject({
+      success: true,
+      data: {
+        message: "Existing active workflow run already in progress",
+        executionProof: {
+          state: "resume-tracking",
+          acceptedResponse: {
+            upstreamStatusCode: 202,
+            accepted: true,
+            yoxaExecutionId: "yoxa-run-123",
+          },
+          currentRun: {
+            status: "RUNNING",
+          },
+        },
+      },
+    });
+  });
+
+  it("retains the upstream failure status instead of returning a synthetic 502", async () => {
+    createClient.mockResolvedValue(buildSupabaseClient());
+    getOrCreateWorkflowRun.mockResolvedValue({
+      run: {
+        id: "run-failed-1",
+        case_id: "case-123",
+        workflow_key: "discharge",
+        workflow_name: "Discharge",
+        yoxa_execution_id: null,
+        idempotency_key: "wf_discharge_case-123_1",
+        status: "QUEUED",
+        attempt: 1,
+        input_payload: { triggered_by: "api" },
+        raw_response: {},
+        normalized_output: {},
+        error_code: null,
+        error_message: null,
+        queued_at: "2026-08-24T11:00:00.000Z",
+        started_at: null,
+        completed_at: null,
+        failed_at: null,
+        created_at: "2026-08-24T11:00:00.000Z",
+        updated_at: "2026-08-24T11:00:00.000Z",
+      },
+      isExisting: false,
+    });
+    updateWorkflowRunState
+      .mockResolvedValueOnce({
+        id: "run-failed-1",
+        status: "TRIGGERING",
+      })
+      .mockResolvedValueOnce({
+        id: "run-failed-1",
+        status: "FAILED",
+      });
+    triggerYoxaWorkflow.mockResolvedValue({
+      success: false,
+      statusCode: 409,
+      data: {
+        error: {
+          code: "IDEMPOTENCY_CONFLICT",
+          message: "payload does not match prior trigger",
+        },
+      },
+      error: {
+        code: "IDEMPOTENCY_CONFLICT",
+        message: "payload does not match prior trigger",
+        retryable: false,
+      },
+      rawBody: "{\"error\":{\"code\":\"IDEMPOTENCY_CONFLICT\"}}",
+    });
+
+    const response = await POST(makeRequest(JSON.stringify({ workflowKey: "discharge" })), {
+      params: Promise.resolve({ caseId: "case-123" }),
+    });
+
+    expect(response.status).toBe(409);
+    expect(updateWorkflowRunState).toHaveBeenNthCalledWith(2, "run-failed-1", {
+      status: "FAILED",
+      raw_response: {
+        statusCode: 409,
+        body: {
+          error: {
+            code: "IDEMPOTENCY_CONFLICT",
+            message: "payload does not match prior trigger",
+          },
+        },
+        rawBody: "{\"error\":{\"code\":\"IDEMPOTENCY_CONFLICT\"}}",
+      },
+      error_code: "IDEMPOTENCY_CONFLICT",
+      error_message: "payload does not match prior trigger",
+    });
   });
 });

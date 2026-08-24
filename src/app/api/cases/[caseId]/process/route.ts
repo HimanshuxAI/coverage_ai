@@ -8,10 +8,23 @@ import { createClient } from "@/utils/supabase/server";
 import { getOrCreateWorkflowRun, updateWorkflowRunState } from "@/lib/yoxa/runs";
 import { triggerYoxaWorkflow } from "@/lib/yoxa/client";
 import { parseProcessRequest } from "@/lib/yoxa/process-request";
+import { buildExecutionProof } from "@/lib/yoxa/execution-proof";
 import {
   assertRequestedWorkflowIsNext,
   caseStatusRequiresResolutionGraph,
 } from "@/lib/workflow/next-action";
+
+function buildPersistedTriggerResponse(triggerResult: {
+  statusCode: number;
+  data?: Record<string, unknown>;
+  rawBody?: string;
+}) {
+  return {
+    statusCode: triggerResult.statusCode,
+    body: triggerResult.data || {},
+    rawBody: triggerResult.rawBody ?? null,
+  };
+}
 
 export async function POST(
   request: NextRequest,
@@ -110,6 +123,7 @@ export async function POST(
           status: caseRecord.current_case_status,
           message: "Existing active workflow run already in progress",
           workflowRun: run,
+          executionProof: buildExecutionProof(run, { source: "existing-active-run" }),
         },
       });
     }
@@ -123,11 +137,12 @@ export async function POST(
       idempotencyKey: run.idempotency_key,
       payload: { trigger_text: "Start workflow", case_id: caseId },
     });
+    const persistedTriggerResponse = buildPersistedTriggerResponse(triggerResult);
 
     if (triggerResult.success) {
       const updatedRun = await updateWorkflowRunState(run.id, {
         status: "RUNNING",
-        raw_response: triggerResult.data || {},
+        raw_response: persistedTriggerResponse,
         normalized_output: {
           triggered: true,
           statusCode: triggerResult.statusCode,
@@ -141,29 +156,36 @@ export async function POST(
         audit_event_id: auditEventId,
         case_id: caseId,
         case_version: caseRecord.case_version || 1,
+        agent_run_id: run.id,
         event_type: `WORKFLOW_TRIGGERED_${workflowKey.toUpperCase()}`,
         event_data: {
           workflow_key: workflowKey,
           idempotency_key: run.idempotency_key,
-          status: triggerResult.statusCode,
+          workflow_run_id: run.id,
+          upstream_status: triggerResult.statusCode,
         },
       });
 
-      return NextResponse.json({
-        success: true,
-        data: {
-          caseId,
-          status: caseRecord.current_case_status,
-          workflowRun: updatedRun,
+      return NextResponse.json(
+        {
+          success: true,
+          data: {
+            caseId,
+            status: caseRecord.current_case_status,
+            workflowRun: updatedRun,
+            executionProof: buildExecutionProof(updatedRun),
+          },
         },
-      });
+        { status: triggerResult.statusCode === 202 ? 202 : 200 }
+      );
     } else {
       const failedRun = await updateWorkflowRunState(run.id, {
         status: "FAILED",
-        raw_response: triggerResult.data || {},
+        raw_response: persistedTriggerResponse,
         error_code: triggerResult.error?.code || "TRIGGER_FAILED",
         error_message: triggerResult.error?.message || "Failed to trigger Yoxa deployment",
       });
+      const failureStatus = triggerResult.statusCode >= 400 ? triggerResult.statusCode : 502;
 
       return NextResponse.json(
         {
@@ -174,9 +196,10 @@ export async function POST(
           },
           data: {
             workflowRun: failedRun,
+            executionProof: buildExecutionProof(failedRun),
           },
         },
-        { status: 502 }
+        { status: failureStatus }
       );
     }
   } catch (err: unknown) {

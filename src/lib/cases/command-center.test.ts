@@ -296,6 +296,32 @@ describe("buildCommandCenterViewModel", () => {
           failedAt: null,
           createdAt: "2026-08-24T10:30:00.000Z",
           updatedAt: "2026-08-24T10:32:00.000Z",
+          executionProof: {
+            state: "accepted",
+            durableRun: {
+              workflowRunId: "run-1",
+              idempotencyKey: "idem-1",
+              persistedAt: "2026-08-24T10:30:00.000Z",
+              queuedAt: "2026-08-24T10:30:00.000Z",
+            },
+            requestDispatch: {
+              dispatched: true,
+              dispatchedAt: "2026-08-24T10:31:00.000Z",
+            },
+            acceptedResponse: {
+              accepted: true,
+              upstreamStatusCode: 202,
+              yoxaExecutionId: "yoxa-run-1",
+            },
+            currentRun: {
+              status: "RUNNING",
+              terminal: false,
+              startedAt: "2026-08-24T10:31:00.000Z",
+              completedAt: null,
+              failedAt: null,
+              updatedAt: "2026-08-24T10:32:00.000Z",
+            },
+          },
         },
       ],
       evidenceReports: [

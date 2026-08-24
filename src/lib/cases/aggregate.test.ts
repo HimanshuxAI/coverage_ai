@@ -46,7 +46,10 @@ const waitingApprovalRunRow = {
   status: "WAITING_FOR_HUMAN",
   attempt: 1,
   input_payload: { workflowKey: "appeal" },
-  raw_response: { workflow_run_id: "yoxa-run-2" },
+  raw_response: {
+    statusCode: 202,
+    body: { workflow_run_id: "yoxa-run-2" },
+  },
   normalized_output: { triggered: true },
   error_code: null,
   error_message: null,
@@ -68,7 +71,10 @@ const runningWorkflowRunRow = {
   status: "RUNNING",
   attempt: 1,
   input_payload: { workflowKey: "preauth" },
-  raw_response: { workflow_run_id: "yoxa-run-1" },
+  raw_response: {
+    statusCode: 202,
+    body: { workflow_run_id: "yoxa-run-1" },
+  },
   normalized_output: { triggered: true },
   error_code: null,
   error_message: null,
@@ -246,7 +252,10 @@ describe("buildCaseAggregate", () => {
             status: "WAITING_FOR_HUMAN",
             attempt: 1,
             inputPayload: { workflowKey: "appeal" },
-            rawResponse: { workflow_run_id: "yoxa-run-2" },
+            rawResponse: {
+              statusCode: 202,
+              body: { workflow_run_id: "yoxa-run-2" },
+            },
             normalizedOutput: { triggered: true },
             errorCode: null,
             errorMessage: null,
@@ -256,6 +265,17 @@ describe("buildCaseAggregate", () => {
             failedAt: null,
             createdAt: "2026-08-24T11:00:00.000Z",
             updatedAt: "2026-08-24T11:02:00.000Z",
+            executionProof: {
+              state: "accepted",
+              acceptedResponse: {
+                upstreamStatusCode: 202,
+                accepted: true,
+                yoxaExecutionId: "yoxa-run-2",
+              },
+              currentRun: {
+                status: "WAITING_FOR_HUMAN",
+              },
+            },
           },
           {
             id: "run-1",
@@ -267,7 +287,10 @@ describe("buildCaseAggregate", () => {
             status: "RUNNING",
             attempt: 1,
             inputPayload: { workflowKey: "preauth" },
-            rawResponse: { workflow_run_id: "yoxa-run-1" },
+            rawResponse: {
+              statusCode: 202,
+              body: { workflow_run_id: "yoxa-run-1" },
+            },
             normalizedOutput: { triggered: true },
             errorCode: null,
             errorMessage: null,
@@ -277,6 +300,17 @@ describe("buildCaseAggregate", () => {
             failedAt: null,
             createdAt: "2026-08-24T10:30:00.000Z",
             updatedAt: "2026-08-24T10:32:00.000Z",
+            executionProof: {
+              state: "accepted",
+              acceptedResponse: {
+                upstreamStatusCode: 202,
+                accepted: true,
+                yoxaExecutionId: "yoxa-run-1",
+              },
+              currentRun: {
+                status: "RUNNING",
+              },
+            },
           },
         ],
         evidenceReports: [
@@ -384,6 +418,34 @@ describe("buildCaseAggregate", () => {
 
     expect(result.data.workflowRuns[0]).not.toHaveProperty("created_at");
     expect(result.data.auditEvents[0]).not.toHaveProperty("created_at");
+  });
+
+  it("builds execution proof from the persisted workflow run evidence", () => {
+    const result = buildCaseAggregate({
+      caseRecord: caseRow,
+      workflowRuns: { data: [runningWorkflowRunRow], error: null },
+      evidenceReports: { data: [], error: null },
+      resolutionGraphs: { data: [], error: null },
+      humanDecisions: { data: [], error: null },
+      decisionPackets: { data: [], error: null },
+      auditEvents: { data: [], error: null },
+    });
+
+    expect(result.data.workflowRuns[0].executionProof).toMatchObject({
+      state: "accepted",
+      durableRun: {
+        workflowRunId: "run-1",
+        idempotencyKey: "idem-1",
+      },
+      acceptedResponse: {
+        upstreamStatusCode: 202,
+        accepted: true,
+        yoxaExecutionId: "yoxa-run-1",
+      },
+      currentRun: {
+        status: "RUNNING",
+      },
+    });
   });
 
   it("preserves successful empty reads as empty arrays or nulls", () => {
