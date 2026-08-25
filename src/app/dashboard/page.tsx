@@ -205,7 +205,7 @@ export default function CoverageOperationsDashboard() {
   return (
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
       <header className={styles.navShell}>
-        <div className={styles.navLeft}>
+        <Link className={styles.navLeft} href="/" aria-label="Go to Coverage Twin landing page">
           <span className={styles.navMark} aria-hidden="true" />
           <div>
             <div className={styles.navTitle}>COVERAGE TWIN</div>
@@ -220,7 +220,7 @@ export default function CoverageOperationsDashboard() {
               DECISION OPERATIONS
             </div>
           </div>
-        </div>
+        </Link>
 
         <div
           className={styles.navRight}

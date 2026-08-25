@@ -525,6 +525,11 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
       <header className={`${styles.navShell} ${styles.commandCenterPrintHide}`}>
         <div className={styles.navLeft}>
+          <Link className={styles.navLeft} href="/" aria-label="Go to Coverage Twin landing page">
+            <span className={styles.navMark} aria-hidden="true" />
+            <span className={styles.navTitle}>COVERAGE TWIN</span>
+          </Link>
+          <span style={{ color: "var(--grid)" }}>|</span>
           <Link
             href="/dashboard"
             style={{
