@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import styles from "@/components/landing/landing.module.css";
 import {
@@ -61,6 +62,7 @@ function getWorkflowLabel(workflowKey: (typeof DASHBOARD_WORKFLOW_KEYS)[number])
 }
 
 export default function CoverageOperationsDashboard() {
+  const router = useRouter();
   const [cases, setCases] = useState<CaseRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [caseSnapshotUnavailable, setCaseSnapshotUnavailable] = useState(false);
@@ -205,7 +207,15 @@ export default function CoverageOperationsDashboard() {
   return (
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
       <header className={styles.navShell}>
-        <Link className={styles.navLeft} href="/" aria-label="Go to Coverage Twin landing page">
+        <Link
+          className={styles.navLeft}
+          href="/"
+          aria-label="Go to Coverage Twin landing page"
+          onClick={(event) => {
+            event.preventDefault();
+            router.push("/");
+          }}
+        >
           <span className={styles.navMark} aria-hidden="true" />
           <div>
             <div className={styles.navTitle}>COVERAGE TWIN</div>
@@ -226,6 +236,9 @@ export default function CoverageOperationsDashboard() {
           className={styles.navRight}
           style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 12 }}
         >
+          <Link href="/" className={styles.navScrollLink}>
+            HOME
+          </Link>
           <a href="#operations" className={styles.navScrollLink}>
             OPERATIONS
           </a>

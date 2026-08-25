@@ -2,6 +2,7 @@
 
 import { use, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 import { createActiveRefreshController } from "@/lib/cases/active-refresh";
 import type { CaseAggregate } from "@/lib/cases/contracts";
@@ -205,6 +206,7 @@ async function fetchCaseAggregate(caseId: string, signal?: AbortSignal): Promise
 }
 
 export default function CaseCommandCenterPage({ params }: { params: Promise<{ caseId: string }> }) {
+  const router = useRouter();
   const resolvedParams = use(params);
   const caseId = resolvedParams.caseId;
 
@@ -525,7 +527,15 @@ export default function CaseCommandCenterPage({ params }: { params: Promise<{ ca
     <div className={styles.landingRoot} style={{ minHeight: "100vh" }}>
       <header className={`${styles.navShell} ${styles.commandCenterPrintHide}`}>
         <div className={styles.navLeft}>
-          <Link className={styles.navLeft} href="/" aria-label="Go to Coverage Twin landing page">
+          <Link
+            className={styles.navLeft}
+            href="/"
+            aria-label="Go to Coverage Twin landing page"
+            onClick={(event) => {
+              event.preventDefault();
+              router.push("/");
+            }}
+          >
             <span className={styles.navMark} aria-hidden="true" />
             <span className={styles.navTitle}>COVERAGE TWIN</span>
           </Link>
