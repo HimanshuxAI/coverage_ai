@@ -109,7 +109,9 @@ export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<
   const resolutionGraph = latestResolutionGraph
     ? {
         id: latestResolutionGraph.id,
-        graphId: latestResolutionGraph.graph_id,
+        graphId:
+          latestResolutionGraph.graph_id ??
+          `resolution_graph:${latestResolutionGraph.case_id}:v${latestResolutionGraph.graph_version}`,
         caseId: latestResolutionGraph.case_id,
         caseVersion: latestResolutionGraph.case_version,
         graphVersion: latestResolutionGraph.graph_version,

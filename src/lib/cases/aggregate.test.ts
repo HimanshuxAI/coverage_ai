@@ -547,6 +547,26 @@ describe("buildCaseAggregate", () => {
     });
   });
 
+  it("normalizes older resolution graph rows that do not include graph_id", () => {
+    const result = buildCaseAggregate({
+      caseRecord: caseRow,
+      workflowRuns: { data: [runningWorkflowRunRow], error: null },
+      evidenceReports: { data: [evidenceReportRow], error: null },
+      resolutionGraphs: {
+        data: [{ ...resolutionGraphRow, graph_id: undefined } as unknown as ResolutionGraph],
+        error: null,
+      },
+      humanDecisions: { data: [latestDecisionRow], error: null },
+      decisionPackets: { data: [latestPacketRow], error: null },
+      auditEvents: { data: [auditEventRow], error: null },
+    });
+
+    expect(result.data.resolutionGraph).toMatchObject({
+      graphId: "resolution_graph:CASE-CT-REAL-001:v3",
+      graphState: "DECISION_READY",
+    });
+  });
+
   it("throws a named aggregate read failure when a required related query errors", () => {
     const build = () =>
       buildCaseAggregate({

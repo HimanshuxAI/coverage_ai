@@ -31,12 +31,39 @@ function getSeedErrorMessage(error: unknown): string {
   return String(error);
 }
 
+function isMissingColumnError(error: unknown, column: string): boolean {
+  return getSeedErrorMessage(error).includes(`'${column}' column`);
+}
+
 async function assertSeedWrite(label: string, write: PromiseLike<SeedWriteResult>) {
   const { error } = await write;
 
   if (error) {
     throw new Error(`${label}: ${getSeedErrorMessage(error)}`);
   }
+}
+
+async function upsertDemoResolutionGraph(supabase: Awaited<ReturnType<typeof createClient>>) {
+  const result = await supabase.from("resolution_graphs").upsert([DEMO_RESOLUTION_GRAPH], {
+    onConflict: "case_id,graph_version",
+  });
+
+  if (!result.error) {
+    return;
+  }
+
+  if (!isMissingColumnError(result.error, "graph_id")) {
+    throw new Error(`resolution_graphs: ${getSeedErrorMessage(result.error)}`);
+  }
+
+  const legacyResolutionGraph: Record<string, unknown> = { ...DEMO_RESOLUTION_GRAPH };
+  delete legacyResolutionGraph.graph_id;
+  await assertSeedWrite(
+    "resolution_graphs",
+    supabase.from("resolution_graphs").upsert([legacyResolutionGraph], {
+      onConflict: "case_id,graph_version",
+    })
+  );
 }
 
 export async function POST() {
@@ -59,12 +86,7 @@ export async function POST() {
         onConflict: "case_id,case_version,agent_name",
       })
     );
-    await assertSeedWrite(
-      "resolution_graphs",
-      supabase.from("resolution_graphs").upsert([DEMO_RESOLUTION_GRAPH], {
-        onConflict: "case_id,graph_version",
-      })
-    );
+    await upsertDemoResolutionGraph(supabase);
     await assertSeedWrite(
       "decision_packets",
       supabase.from("decision_packets").upsert([DEMO_DECISION_PACKET], {
