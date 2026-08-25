@@ -3,11 +3,12 @@
    Seeds the happy-path case CASE-CT-0001
    ====================================================== */
 
-import type { CaseRecord } from "@/types/workflow";
+import type { AuditEvent, CaseRecord, HumanDecision, ResolutionGraph } from "@/types/workflow";
+import type { WorkflowRunRecord } from "@/lib/yoxa/types";
 
 export const DEMO_CASE: Omit<CaseRecord, "id" | "created_at" | "updated_at"> = {
   case_id: "CASE-CT-0001",
-  case_version: 1,
+  case_version: 2,
   patient_consent_status: true,
   patient_consent_timestamp: "2026-08-16T18:05:00+05:30",
   hospital_clinical_confirmation_status: true,
@@ -24,7 +25,7 @@ export const DEMO_CASE: Omit<CaseRecord, "id" | "created_at" | "updated_at"> = {
     "CoverageTwin_Demo_Estimate_Contract.pdf",
   ],
   document_provenance: "VERIFIED",
-  current_case_status: "WAITING_FOR_ACTIVATION",
+  current_case_status: "AUTHORISED_BY_HUMAN",
   source_system: "coverage_twin_case_registry",
 };
 
@@ -129,3 +130,237 @@ export const POLICY_CITATIONS = [
   "Clause 6.1 — Co-payment and deductible",
   "Clause 8.4 — Human authority, page 2",
 ];
+
+export const DEMO_EVIDENCE_REPORTS = [
+  DEMO_POLICY_EVIDENCE,
+  DEMO_CLINICAL_EVIDENCE,
+  DEMO_COST_EVIDENCE,
+] as const;
+
+export const DEMO_RESOLUTION_GRAPH = {
+  graph_id: "graph-demo-case-ct-0001-v2",
+  case_id: "CASE-CT-0001",
+  case_version: 2,
+  graph_version: 1,
+  graph_state: "DECISION_READY",
+  dependency_nodes: [
+    {
+      dependency_id: "POLICY-COVERAGE-001",
+      description: "Policy is active, member is eligible, and laparoscopic cholecystectomy is covered.",
+      status: "RESOLVED",
+      sources: ["policy", "clinical"],
+      owner: "coverage-policy-agent",
+      downstream_impact: "Supports planned cashless pre-authorisation.",
+      next_safe_action: "Proceed to contribution calculation.",
+    },
+    {
+      dependency_id: "CLINICAL-NECESSITY-001",
+      description: "Clinical evidence supports symptomatic cholelithiasis and planned laparoscopic treatment.",
+      status: "RESOLVED",
+      sources: ["clinical"],
+      owner: "clinical-evidence-agent",
+      downstream_impact: "Confirms medical necessity for the requested procedure.",
+      next_safe_action: "Retain clinical fitness condition for discharge.",
+    },
+    {
+      dependency_id: "FINANCIAL-CONTRACT-001",
+      description: "Network hospital contract, estimate, deductible, and co-payment rules were reconciled.",
+      status: "RESOLVED",
+      sources: ["cost_contract", "policy"],
+      owner: "cost-contract-agent",
+      downstream_impact: "Produces expected insurer contribution of INR 85,000.",
+      next_safe_action: "Present benefit recommendation for human authorization.",
+    },
+    {
+      dependency_id: "CLINICAL-FITNESS-001",
+      description: "Final clinical fitness and discharge summary remain post-authorisation conditions.",
+      status: "POST_AUTHORISATION_CONDITION",
+      sources: ["clinical"],
+      owner: "hospital-desk",
+      downstream_impact: "Must be checked before final settlement.",
+      next_safe_action: "Collect discharge evidence before settlement.",
+    },
+  ],
+  unresolved_dependencies: [],
+  post_authorisation_conditions: ["CLINICAL-FITNESS-001", "FINAL-BILL-RECONCILIATION"],
+  state_reason_codes: [
+    "POLICY_ACTIVE",
+    "PROCEDURE_COVERED",
+    "MEDICAL_NECESSITY_SUPPORTED",
+    "NETWORK_CONTRACT_RECONCILED",
+    "HUMAN_AUTHORISATION_REQUIRED",
+  ],
+  next_safe_action: "Human reviewer may authorise INR 85,000 with discharge and final-bill conditions.",
+  source_report_versions: {
+    policy: "policy:v2",
+    clinical: "clinical:v2",
+    cost_contract: "cost_contract:v2",
+  },
+} as const satisfies Omit<ResolutionGraph, "id" | "created_at">;
+
+export const DEMO_DECISION_PACKET = {
+  packet_id: "packet-demo-case-ct-0001-v2",
+  case_id: "CASE-CT-0001",
+  case_version: 2,
+  graph_version: 1,
+  packet_data: {
+    recommendation: "AUTHORISE",
+    recommended_benefit: 85000,
+    currency: "INR",
+    patient_contribution: 27000,
+    summary:
+      "Coverage Twin reconciled policy, clinical necessity, hospital contract, deductible, and co-payment evidence for a planned cashless laparoscopic cholecystectomy.",
+    evidence: {
+      policy: "Procedure covered under active health policy after waiting period satisfaction.",
+      clinical: "Medical necessity supported by clinical record CLIN-3.",
+      financial: "Contracted package and non-payable items reconciled against NIR-ASP-2026.",
+    },
+    conditions: ["Final clinical fitness at admission", "Discharge summary and final bill before settlement"],
+    citations: POLICY_CITATIONS,
+  },
+};
+
+export const DEMO_HUMAN_DECISION = {
+  human_decision_id: "human-decision-demo-case-ct-0001-v2",
+  case_id: "CASE-CT-0001",
+  case_version: 2,
+  graph_version: 1,
+  packet_id: DEMO_DECISION_PACKET.packet_id,
+  reviewer_identity: "Dr. Kavya Rao",
+  reviewer_role: "Senior Medical Adjudicator",
+  outcome: "AUTHORISE",
+  written_reason:
+    "Authorised after policy eligibility, medical necessity, network contract, deductible, and co-payment checks aligned across the resolution graph.",
+  conditions: ["Clinical fitness confirmation at admission", "Final bill and discharge summary before settlement"],
+  authorised_amount: 85000,
+  currency: "INR",
+  validity_conditions: ["Admission on or before 24 Aug 2026", "Network package NIR-ASP-2026 applies"],
+  clarification_fields: [],
+  decision_timestamp: "2026-08-24T11:15:00+05:30",
+} as const satisfies Omit<HumanDecision, "id" | "created_at">;
+
+export const DEMO_WORKFLOW_RUNS = [
+  {
+    case_id: "CASE-CT-0001",
+    workflow_key: "intake",
+    workflow_name: "coverage-twin-intake-context",
+    yoxa_execution_id: "demo-yoxa-intake-0001",
+    idempotency_key: "demo-case-ct-0001-intake",
+    status: "COMPLETED",
+    attempt: 1,
+    input_payload: { demo: true, trigger_text: "Seeded video demo intake normalisation" },
+    raw_response: { status: 202, accepted: true },
+    normalized_output: { case_context_normalized: true, consent_verified: true },
+    error_code: null,
+    error_message: null,
+    queued_at: "2026-08-24T05:15:00.000Z",
+    started_at: "2026-08-24T05:15:12.000Z",
+    completed_at: "2026-08-24T05:16:30.000Z",
+    failed_at: null,
+  },
+  {
+    case_id: "CASE-CT-0001",
+    workflow_key: "preauth",
+    workflow_name: "workflow_planned_cashless_preauthorisation",
+    yoxa_execution_id: "demo-yoxa-preauth-0001",
+    idempotency_key: "demo-case-ct-0001-preauth",
+    status: "COMPLETED",
+    attempt: 1,
+    input_payload: { demo: true, trigger_text: "Seeded video demo pre-authorisation" },
+    raw_response: { status: 202, accepted: true },
+    normalized_output: {
+      evidence_reports: 3,
+      resolution_graph: DEMO_RESOLUTION_GRAPH.graph_id,
+      packet_id: DEMO_DECISION_PACKET.packet_id,
+      recommended_benefit: 85000,
+    },
+    error_code: null,
+    error_message: null,
+    queued_at: "2026-08-24T05:17:00.000Z",
+    started_at: "2026-08-24T05:17:15.000Z",
+    completed_at: "2026-08-24T05:19:30.000Z",
+    failed_at: null,
+  },
+  {
+    case_id: "CASE-CT-0001",
+    workflow_key: "discharge",
+    workflow_name: "coverage-twin-discharge-evidence-collection",
+    yoxa_execution_id: "demo-yoxa-discharge-0001",
+    idempotency_key: "demo-case-ct-0001-discharge",
+    status: "RUNNING",
+    attempt: 1,
+    input_payload: { demo: true, trigger_text: "Seeded video demo discharge evidence collection" },
+    raw_response: { status: 202, accepted: true },
+    normalized_output: { awaiting_discharge_summary: true, safe_to_poll: true },
+    error_code: null,
+    error_message: null,
+    queued_at: "2026-08-24T05:25:00.000Z",
+    started_at: "2026-08-24T05:25:14.000Z",
+    completed_at: null,
+    failed_at: null,
+  },
+] as const satisfies readonly Omit<WorkflowRunRecord, "id" | "created_at" | "updated_at">[];
+
+export const DEMO_AUDIT_EVENTS = [
+  {
+    audit_event_id: "audit-demo-intake-normalised",
+    case_id: "CASE-CT-0001",
+    case_version: 2,
+    event_type: "DEMO_INTAKE_NORMALISED",
+    event_data: {
+      summary: "Member, policy, provider, procedure, and consent context normalised for the demo journey.",
+    },
+    agent_run_id: "demo-yoxa-intake-0001",
+    created_at: "2026-08-24T05:16:30.000Z",
+  },
+  {
+    audit_event_id: "audit-demo-evidence-resolved",
+    case_id: "CASE-CT-0001",
+    case_version: 2,
+    event_type: "DEMO_EVIDENCE_RESOLVED",
+    event_data: {
+      reports: ["policy", "clinical", "cost_contract"],
+      unresolved_dependencies: 0,
+    },
+    agent_run_id: "demo-yoxa-preauth-0001",
+    created_at: "2026-08-24T05:18:45.000Z",
+  },
+  {
+    audit_event_id: "audit-demo-resolution-graph-built",
+    case_id: "CASE-CT-0001",
+    case_version: 2,
+    event_type: "DEMO_RESOLUTION_GRAPH_BUILT",
+    event_data: {
+      graph_id: DEMO_RESOLUTION_GRAPH.graph_id,
+      graph_state: DEMO_RESOLUTION_GRAPH.graph_state,
+      dependency_count: DEMO_RESOLUTION_GRAPH.dependency_nodes.length,
+    },
+    agent_run_id: "demo-yoxa-preauth-0001",
+    created_at: "2026-08-24T05:19:00.000Z",
+  },
+  {
+    audit_event_id: "audit-demo-human-authorised",
+    case_id: "CASE-CT-0001",
+    case_version: 2,
+    event_type: "DEMO_HUMAN_AUTHORISED",
+    event_data: {
+      outcome: "AUTHORISE",
+      authorised_amount: 85000,
+      currency: "INR",
+    },
+    agent_run_id: "human-decision-demo-case-ct-0001-v2",
+    created_at: "2026-08-24T05:45:00.000Z",
+  },
+  {
+    audit_event_id: "audit-demo-discharge-running",
+    case_id: "CASE-CT-0001",
+    case_version: 2,
+    event_type: "DEMO_DISCHARGE_COLLECTION_RUNNING",
+    event_data: {
+      workflow_key: "discharge",
+      duplicate_trigger_guard: "process action hidden while seeded discharge run is RUNNING",
+    },
+    agent_run_id: "demo-yoxa-discharge-0001",
+    created_at: "2026-08-24T05:55:14.000Z",
+  },
+] as const satisfies readonly Omit<AuditEvent, "id">[];
