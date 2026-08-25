@@ -1,9 +1,10 @@
-import type { DependencyNode } from "@/types/workflow";
+import type { DependencyNode, EvidenceReport } from "@/types/workflow";
 import type {
   ApiEnvelope,
   BuildCaseAggregateInput,
   CaseAggregate,
   DependencyNodeDto,
+  ResolutionGraphDto,
 } from "./contracts";
 import { buildExecutionProof } from "@/lib/yoxa/execution-proof";
 
@@ -39,6 +40,86 @@ function mapDependencyNode(node: DependencyNode): DependencyNodeDto {
     owner: node.owner,
     downstreamImpact: node.downstream_impact,
     nextSafeAction: node.next_safe_action,
+  };
+}
+
+function mapEvidenceReportToDependencyNode(
+  evidenceReport: EvidenceReport,
+  index: number
+): DependencyNodeDto {
+  const unresolvedDependencies = evidenceReport.unresolved_dependencies ?? [];
+  const isResolved = unresolvedDependencies.length === 0;
+  const ownerByAgent: Record<string, string> = {
+    policy: "coverage-policy-agent",
+    clinical: "clinical-evidence-agent",
+    cost_contract: "cost-contract-agent",
+  };
+
+  return {
+    dependencyId: `EVIDENCE-${evidenceReport.agent_name.toUpperCase()}-${index + 1}`,
+    description: `${evidenceReport.agent_name.replace(/_/g, " ")} evidence report: ${evidenceReport.report_status}`,
+    status: isResolved ? "RESOLVED" : "UNRESOLVED",
+    sources: [evidenceReport.agent_name],
+    owner: ownerByAgent[evidenceReport.agent_name] ?? "coverage-agent",
+    downstreamImpact: isResolved
+      ? "Supports decision basis for the current case state."
+      : "Blocks complete decision-basis confidence until resolved.",
+    nextSafeAction: isResolved
+      ? "Retain as supporting evidence."
+      : `Resolve: ${unresolvedDependencies.join(", ")}`,
+  };
+}
+
+function buildDerivedResolutionGraph(input: BuildCaseAggregateInput): ResolutionGraphDto | null {
+  if (input.resolutionGraphs.error) {
+    return null;
+  }
+
+  const evidenceReports = input.evidenceReports.data ?? [];
+
+  if (evidenceReports.length === 0) {
+    return null;
+  }
+
+  const latestDecision = input.humanDecisions.data?.[0] ?? null;
+  const graphVersion = latestDecision?.graph_version ?? input.caseRecord.case_version;
+  const unresolvedDependencies = Array.from(
+    new Set(evidenceReports.flatMap((evidenceReport) => evidenceReport.unresolved_dependencies ?? []))
+  );
+  const postAuthorisationConditions = Array.from(
+    new Set(
+      evidenceReports.flatMap((evidenceReport) => {
+        const findings = evidenceReport.findings as { post_authorisation_conditions?: unknown };
+        return Array.isArray(findings.post_authorisation_conditions)
+          ? findings.post_authorisation_conditions.filter((condition): condition is string => typeof condition === "string")
+          : [];
+      })
+    )
+  );
+
+  return {
+    id: `derived-resolution-graph:${input.caseRecord.case_id}:v${graphVersion}`,
+    graphId: `derived-resolution-graph:${input.caseRecord.case_id}:v${graphVersion}`,
+    caseId: input.caseRecord.case_id,
+    caseVersion: input.caseRecord.case_version,
+    graphVersion,
+    graphState: unresolvedDependencies.length === 0 ? "DECISION_READY" : "RESOLVABLE_MISSING_EVIDENCE",
+    dependencyNodes: evidenceReports.map(mapEvidenceReportToDependencyNode),
+    unresolvedDependencies,
+    postAuthorisationConditions,
+    stateReasonCodes: evidenceReports.map(
+      (evidenceReport) => `EVIDENCE_${evidenceReport.agent_name.toUpperCase()}_${evidenceReport.report_status}`
+    ),
+    nextSafeAction: latestDecision
+      ? "Persisted human decision is available; continue downstream workflow tracking."
+      : "Review the persisted evidence reports and complete human decisioning.",
+    sourceReportVersions: Object.fromEntries(
+      evidenceReports.map((evidenceReport) => [
+        evidenceReport.agent_name,
+        `${evidenceReport.agent_name}:case-v${evidenceReport.case_version}`,
+      ])
+    ),
+    createdAt: latestDecision?.created_at ?? evidenceReports[0]?.completed_at ?? input.caseRecord.updated_at,
   };
 }
 
@@ -124,7 +205,7 @@ export function buildCaseAggregate(input: BuildCaseAggregateInput): ApiEnvelope<
         sourceReportVersions: latestResolutionGraph.source_report_versions,
         createdAt: latestResolutionGraph.created_at,
       }
-    : null;
+    : buildDerivedResolutionGraph(input);
 
   const latestDecisionRow = input.humanDecisions.data?.[0] ?? null;
   const latestDecision = latestDecisionRow

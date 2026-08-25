@@ -43,13 +43,13 @@ async function assertSeedWrite(label: string, write: PromiseLike<SeedWriteResult
   }
 }
 
-async function upsertDemoResolutionGraph(supabase: Awaited<ReturnType<typeof createClient>>) {
+async function upsertDemoResolutionGraph(supabase: Awaited<ReturnType<typeof createClient>>): Promise<boolean> {
   const result = await supabase.from("resolution_graphs").upsert([DEMO_RESOLUTION_GRAPH], {
     onConflict: "case_id,graph_version",
   });
 
   if (!result.error) {
-    return;
+    return true;
   }
 
   if (!isMissingColumnError(result.error, "graph_id")) {
@@ -58,12 +58,19 @@ async function upsertDemoResolutionGraph(supabase: Awaited<ReturnType<typeof cre
 
   const legacyResolutionGraph: Record<string, unknown> = { ...DEMO_RESOLUTION_GRAPH };
   delete legacyResolutionGraph.graph_id;
-  await assertSeedWrite(
-    "resolution_graphs",
-    supabase.from("resolution_graphs").upsert([legacyResolutionGraph], {
-      onConflict: "case_id,graph_version",
-    })
-  );
+  const legacyResult = await supabase.from("resolution_graphs").upsert([legacyResolutionGraph], {
+    onConflict: "case_id,graph_version",
+  });
+
+  if (!legacyResult.error) {
+    return true;
+  }
+
+  if (isMissingColumnError(legacyResult.error, "graph_state")) {
+    return false;
+  }
+
+  throw new Error(`resolution_graphs: ${getSeedErrorMessage(legacyResult.error)}`);
 }
 
 export async function POST() {
@@ -86,7 +93,7 @@ export async function POST() {
         onConflict: "case_id,case_version,agent_name",
       })
     );
-    await upsertDemoResolutionGraph(supabase);
+    const storedResolutionGraph = await upsertDemoResolutionGraph(supabase);
     await assertSeedWrite(
       "decision_packets",
       supabase.from("decision_packets").upsert([DEMO_DECISION_PACKET], {
@@ -134,7 +141,8 @@ export async function POST() {
         case_id: data.case_id,
         seeded: {
           evidenceReports: DEMO_EVIDENCE_REPORTS.length,
-          resolutionGraphs: 1,
+          resolutionGraphs: storedResolutionGraph ? 1 : 0,
+          synthesizedResolutionGraph: !storedResolutionGraph,
           decisionPackets: 1,
           humanDecisions: 1,
           workflowRuns: DEMO_WORKFLOW_RUNS.length,
