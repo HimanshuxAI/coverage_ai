@@ -37,6 +37,10 @@ function buildSeedClient(options?: { existingAuditIds?: string[] }) {
   });
 
   const insert = vi.fn(() => buildPromiseQuery({ error: null }));
+  const updateInFilter = vi.fn(() => buildPromiseQuery({ error: null }));
+  const updateWorkflowKeyEq = vi.fn(() => ({ in: updateInFilter }));
+  const updateCaseEq = vi.fn(() => ({ eq: updateWorkflowKeyEq }));
+  const update = vi.fn(() => ({ eq: updateCaseEq }));
   const inFilter = vi.fn().mockResolvedValue({
     data: (options?.existingAuditIds ?? []).map((audit_event_id) => ({ audit_event_id })),
     error: null,
@@ -45,10 +49,11 @@ function buildSeedClient(options?: { existingAuditIds?: string[] }) {
   const from = vi.fn(() => ({
     upsert,
     insert,
+    update,
     select,
   }));
 
-  return { from, upsert, insert, select, inFilter, selectAfterCaseUpsert, single };
+  return { from, upsert, insert, update, select, inFilter, updateInFilter, selectAfterCaseUpsert, single };
 }
 
 describe("POST /api/workflow/seed", () => {
@@ -107,6 +112,18 @@ describe("POST /api/workflow/seed", () => {
     expect(supabase.upsert).toHaveBeenCalledWith(expect.any(Array), {
       onConflict: "idempotency_key",
     });
+    expect(supabase.update).toHaveBeenCalledWith({
+      status: "COMPLETED",
+      completed_at: "2026-08-24T05:19:30.000Z",
+      error_code: null,
+      error_message: null,
+    });
+    expect(supabase.updateInFilter).toHaveBeenCalledWith("status", [
+      "QUEUED",
+      "TRIGGERING",
+      "RUNNING",
+      "WAITING_FOR_HUMAN",
+    ]);
     expect(supabase.insert).toHaveBeenCalledWith(expect.any(Array));
   });
 

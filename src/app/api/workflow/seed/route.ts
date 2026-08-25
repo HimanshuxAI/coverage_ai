@@ -112,6 +112,20 @@ export async function POST() {
         onConflict: "idempotency_key",
       })
     );
+    await assertSeedWrite(
+      "workflow_runs active preauth repair",
+      supabase
+        .from("workflow_runs")
+        .update({
+          status: "COMPLETED",
+          completed_at: "2026-08-24T05:19:30.000Z",
+          error_code: null,
+          error_message: null,
+        })
+        .eq("case_id", DEMO_CASE.case_id)
+        .eq("workflow_key", "preauth")
+        .in("status", ["QUEUED", "TRIGGERING", "RUNNING", "WAITING_FOR_HUMAN"])
+    );
 
     const demoAuditIds = DEMO_AUDIT_EVENTS.map((auditEvent) => auditEvent.audit_event_id);
     const { data: existingAuditEvents, error: auditReadError } = await supabase
